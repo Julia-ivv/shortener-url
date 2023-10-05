@@ -29,7 +29,6 @@ func HandlerPost(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	return
 }
 
 func HandlerGet(res http.ResponseWriter, req *http.Request) {

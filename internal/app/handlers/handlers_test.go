@@ -81,6 +81,7 @@ func TestHandlerGet(t *testing.T) {
 			w := httptest.NewRecorder()
 			HandlerGet(w, req)
 			res := w.Result()
+			defer res.Body.Close()
 			assert.Equal(t, test.want.statusCode, res.StatusCode)
 			assert.Equal(t, test.want.originURL, res.Header.Get("Location"))
 		})
