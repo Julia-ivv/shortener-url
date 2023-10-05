@@ -11,7 +11,7 @@ import (
 
 func HandlerPost(res http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/" {
-		http.Error(res, "400 bad request", http.StatusBadRequest)
+		http.Error(res, "wrong path", http.StatusBadRequest)
 		return
 	}
 	postURL, err := io.ReadAll(req.Body)
