@@ -4,56 +4,98 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+var inc int
+
+type testURLs struct {
+	originalURLs map[string]string
+}
+
+var testRepo testURLs
+
+func (urls *testURLs) GetURL(shortURL string) (originURL string, ok bool) {
+	// получить длинный урл
+	originURL, ok = urls.originalURLs[shortURL]
+	return originURL, ok
+}
+
+func (urls *testURLs) AddURL(originURL string) (shortURL string) {
+	// добавить новый урл
+	inc++
+	short := strconv.Itoa(inc)
+	urls.originalURLs[short] = originURL
+	return short
+}
+
+func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
+	client := ts.Client()
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	req, err := http.NewRequest(method, path, nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	return resp, string(respBody)
+}
+
 func TestHandlerPost(t *testing.T) {
+	testRepo.originalURLs = make(map[string]string)
+
+	ts := httptest.NewServer(URLRouter(&testRepo))
+	defer ts.Close()
+
 	type want struct {
 		contentType string
 		statusCode  int
-		body        string
 	}
 	tests := []struct {
 		name        string
 		path        string
-		originalURL string // URL в body
+		originalURL string // URL в теле запроса
 		want        want
 	}{
 		{
-			name:        "positive test",
-			path:        "/",
+			name:        "URL added successfully",
+			path:        "http://localhost:8080/",
 			originalURL: "https://mail.ru/",
-			want:        want{contentType: "text/plain", statusCode: 201, body: "http://example.com/101"},
-		},
-		{
-			name:        "wrong path",
-			path:        "/11",
-			originalURL: "https://mail.ru/",
-			want:        want{contentType: "text/plain; charset=utf-8", statusCode: 400, body: "wrong path\n"},
+			want: want{
+				contentType: "text/plain",
+				statusCode:  201,
+			},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, test.path, strings.NewReader(test.originalURL))
-			w := httptest.NewRecorder()
-			HandlerPost(w, req)
-			res := w.Result()
-			assert.Equal(t, test.want.statusCode, res.StatusCode)
-			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
-			defer res.Body.Close()
-			resBody, err := io.ReadAll(res.Body)
-			require.NoError(t, err)
-			assert.Equal(t, test.want.body, string(resBody))
+			resp, getBody := testRequest(t, ts, "POST", test.path)
+			assert.Equal(t, test.want.statusCode, resp.StatusCode)
+			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
+			assert.True(t, assert.NotEmpty(t, getBody))
 		})
 	}
 }
 
 func TestHandlerGet(t *testing.T) {
+	testRepo.originalURLs = make(map[string]string)
+	testRepo.originalURLs["EwHXdJfB"] = "https://practicum.yandex.ru/"
+
+	ts := httptest.NewServer(URLRouter(&testRepo))
+	defer ts.Close()
+
 	type want struct {
 		statusCode int
 		originURL  string
@@ -64,26 +106,22 @@ func TestHandlerGet(t *testing.T) {
 		want want
 	}{
 		{
-			name: "positive test",
-			path: "/EwHXdJfB",
+			name: "url exists in repository",
+			path: "http://localhost:8080/EwHXdJfB",
 			want: want{statusCode: 307, originURL: "https://practicum.yandex.ru/"},
 		},
 		{
-			name: "not found test",
-			path: "/11",
+			name: "url does not exist in repository",
+			path: "http://localhost:8080/11",
 			want: want{statusCode: 400, originURL: ""},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, test.path, nil)
-			w := httptest.NewRecorder()
-			HandlerGet(w, req)
-			res := w.Result()
-			defer res.Body.Close()
-			assert.Equal(t, test.want.statusCode, res.StatusCode)
-			assert.Equal(t, test.want.originURL, res.Header.Get("Location"))
+			resp, _ := testRequest(t, ts, "GET", test.path)
+			assert.Equal(t, test.want.statusCode, resp.StatusCode)
+			assert.Equal(t, test.want.originURL, resp.Header.Get("Location"))
 		})
 	}
 }

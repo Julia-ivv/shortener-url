@@ -4,24 +4,12 @@ import (
 	"net/http"
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/handlers"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, postURL)
-	err := http.ListenAndServe(":8080", mux)
+	err := http.ListenAndServe(":8080", handlers.URLRouter(&storage.Repo))
 	if err != nil {
 		panic(err)
-	}
-}
-
-func postURL(res http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case http.MethodPost:
-		handlers.HandlerPost(res, req)
-	case http.MethodGet:
-		handlers.HandlerGet(res, req)
-	default:
-		res.WriteHeader(http.StatusBadRequest)
 	}
 }
