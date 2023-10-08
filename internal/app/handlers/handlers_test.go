@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +40,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 		return http.ErrUseLastResponse
 	}
 
-	req, err := http.NewRequest(method, path, nil)
+	req, err := http.NewRequest(method, ts.URL+path, nil)
 	require.NoError(t, err)
 
 	resp, err := client.Do(req)
@@ -55,7 +56,9 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 func TestHandlerPost(t *testing.T) {
 	testRepo.originalURLs = make(map[string]string)
 
-	ts := httptest.NewServer(URLRouter(&testRepo))
+	router := chi.NewRouter()
+	router.Post("/", HandlerPost(&testRepo))
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	type want struct {
@@ -70,7 +73,7 @@ func TestHandlerPost(t *testing.T) {
 	}{
 		{
 			name:        "URL added successfully",
-			path:        "http://localhost:8080/",
+			path:        "/",
 			originalURL: "https://mail.ru/",
 			want: want{
 				contentType: "text/plain",
@@ -82,6 +85,7 @@ func TestHandlerPost(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, getBody := testRequest(t, ts, "POST", test.path)
+			defer resp.Body.Close()
 			assert.Equal(t, test.want.statusCode, resp.StatusCode)
 			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
 			assert.True(t, assert.NotEmpty(t, getBody))
@@ -93,7 +97,9 @@ func TestHandlerGet(t *testing.T) {
 	testRepo.originalURLs = make(map[string]string)
 	testRepo.originalURLs["EwHXdJfB"] = "https://practicum.yandex.ru/"
 
-	ts := httptest.NewServer(URLRouter(&testRepo))
+	router := chi.NewRouter()
+	router.Get("/{shortURL}", HandlerGet(&testRepo))
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	type want struct {
@@ -107,12 +113,12 @@ func TestHandlerGet(t *testing.T) {
 	}{
 		{
 			name: "url exists in repository",
-			path: "http://localhost:8080/EwHXdJfB",
+			path: "/EwHXdJfB",
 			want: want{statusCode: 307, originURL: "https://practicum.yandex.ru/"},
 		},
 		{
 			name: "url does not exist in repository",
-			path: "http://localhost:8080/11",
+			path: "/11",
 			want: want{statusCode: 400, originURL: ""},
 		},
 	}
@@ -120,6 +126,7 @@ func TestHandlerGet(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			resp, _ := testRequest(t, ts, "GET", test.path)
+			defer resp.Body.Close()
 			assert.Equal(t, test.want.statusCode, resp.StatusCode)
 			assert.Equal(t, test.want.originURL, resp.Header.Get("Location"))
 		})
