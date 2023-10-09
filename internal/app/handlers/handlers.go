@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 )
@@ -30,7 +31,7 @@ func HandlerPost(repo storage.Repositories) http.HandlerFunc {
 		shortURL := repo.AddURL(string(postURL))
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-		_, err = res.Write([]byte("http://" + req.Host + "/" + shortURL))
+		_, err = res.Write([]byte(config.Flags.URL + "/" + shortURL))
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
