@@ -2,11 +2,13 @@ package config
 
 import (
 	"flag"
+
+	"github.com/caarlos0/env"
 )
 
 type Config struct {
-	Host string // -a адрес запуска HTTP-сервера например localhost:8080
-	URL  string // -b базовый адрес результирующего сокращённого URL, например  http://localhost:8080
+	Host string `env:"SERVER_ADDRESS"` // -a адрес запуска HTTP-сервера например localhost:8080
+	URL  string `env:"BASE_URL"`       // -b базовый адрес результирующего сокращённого URL, например  http://localhost:8080
 }
 
 type ConfigBuilder struct {
@@ -34,5 +36,7 @@ func InitConfigFromFlags() Config {
 	flag.StringVar(&url, "b", "http://localhost:8080", "base address of the resulting URL")
 	flag.Parse()
 	cb = cb.SetHost(host).SetURL(url)
+	env.Parse(&cb.config)
+
 	return cb.config
 }

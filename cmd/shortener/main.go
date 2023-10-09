@@ -11,7 +11,6 @@ import (
 func main() {
 	config.Flags = config.InitConfigFromFlags()
 
-	//fmt.Println("main", config.Flags.Host)
 	err := http.ListenAndServe(config.Flags.Host, handlers.URLRouter(&storage.Repo))
 	if err != nil {
 		panic(err)
