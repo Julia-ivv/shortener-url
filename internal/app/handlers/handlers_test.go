@@ -57,7 +57,8 @@ func TestHandlerPost(t *testing.T) {
 	testRepo.originalURLs = make(map[string]string)
 
 	router := chi.NewRouter()
-	router.Post("/", HandlerPost(&testRepo))
+	hs := NewHandlers(&testRepo)
+	router.Post("/", hs.postURL)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -95,10 +96,11 @@ func TestHandlerPost(t *testing.T) {
 
 func TestHandlerGet(t *testing.T) {
 	testRepo.originalURLs = make(map[string]string)
-	testRepo.originalURLs["EwHXdJfB"] = "https://practicum.yandex.ru/"
+	testRepo.originalURLs["EwH"] = "https://practicum.yandex.ru/"
 
 	router := chi.NewRouter()
-	router.Get("/{shortURL}", HandlerGet(&testRepo))
+	hs := NewHandlers(&testRepo)
+	router.Get("/{shortURL}", hs.getURL)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -113,7 +115,7 @@ func TestHandlerGet(t *testing.T) {
 	}{
 		{
 			name: "url exists in repository",
-			path: "/EwHXdJfB",
+			path: "/EwH",
 			want: want{statusCode: 307, originURL: "https://practicum.yandex.ru/"},
 		},
 		{

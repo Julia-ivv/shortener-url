@@ -5,14 +5,17 @@ import (
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/handlers"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 )
 
 func main() {
-	config.Flags = config.InitConfigFromFlags()
+	config.Flags = *config.NewConfig()
 
-	err := http.ListenAndServe(config.Flags.Host, handlers.URLRouter(&storage.Repo))
+	logger.ZapSugar = logger.NewLogger()
+	logger.ZapSugar.Infow("Starting server", "addr", config.Flags.Host)
+
+	err := http.ListenAndServe(config.Flags.Host, handlers.NewURLRouter())
 	if err != nil {
-		panic(err)
+		logger.ZapSugar.Fatalw(err.Error(), "event", "start server")
 	}
 }
