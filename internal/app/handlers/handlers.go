@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"time"
@@ -81,10 +82,52 @@ func (h *Handlers) postURL(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if len(postURL) == 0 {
+		http.Error(res, "request with empty body", http.StatusBadRequest)
+		return
+	}
 	shortURL := h.repo.AddURL(string(postURL))
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write([]byte(config.Flags.URL + "/" + shortURL))
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+}
+
+type Request struct {
+	URL string `json:"url"`
+}
+
+type Response struct {
+	Result string `json:"result"`
+}
+
+func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
+	// в теле запроса JSON с длинным урлом
+	// в ответе JSON с коротким урлом
+	reqJSON, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var reqURL Request
+	if len(reqJSON) == 0 {
+		http.Error(res, "request with empty body", http.StatusBadRequest)
+		return
+	}
+	json.Unmarshal(reqJSON, &reqURL)
+	shortURL := h.repo.AddURL(string(reqURL.URL))
+
+	resp, err := json.Marshal(Response{Result: config.Flags.URL + "/" + string(shortURL)})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	_, err = res.Write(resp)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -111,6 +154,7 @@ func NewURLRouter() chi.Router {
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", HandlerWithLogging(hs.postURL))
 		r.Get("/{shortURL}", HandlerWithLogging(hs.getURL))
+		r.Post("/api/shorten", HandlerWithLogging(hs.postJSON))
 	})
 	return r
 }
