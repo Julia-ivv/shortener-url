@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"time"
 
+	"github.com/Julia-ivv/shortener-url.git/internal/app/compressing"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
@@ -16,56 +16,7 @@ type (
 	Handlers struct {
 		repo storage.Repositories
 	}
-
-	responseInfo struct {
-		status int
-		size   int
-	}
-
-	logResponseWriter struct {
-		http.ResponseWriter
-		responseInfo *responseInfo
-	}
 )
-
-func (res *logResponseWriter) Write(b []byte) (int, error) {
-	size, err := res.ResponseWriter.Write(b)
-	res.responseInfo.size += size
-	return size, err
-}
-
-func (res *logResponseWriter) WriteHeader(statusCode int) {
-	res.ResponseWriter.WriteHeader(statusCode)
-	res.responseInfo.status = statusCode
-}
-
-func HandlerWithLogging(h http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(
-		func(res http.ResponseWriter, req *http.Request) {
-			start := time.Now()
-			responseInfo := &responseInfo{
-				status: 0,
-				size:   0,
-			}
-			logResponseWriter := logResponseWriter{
-				ResponseWriter: res,
-				responseInfo:   responseInfo,
-			}
-			uri := req.RequestURI
-			method := req.Method
-
-			h(&logResponseWriter, req)
-			duration := time.Since(start)
-
-			logger.ZapSugar.Infoln(
-				"uri", uri,
-				"method", method,
-				"status", responseInfo.status,
-				"size", responseInfo.size,
-				"duration", duration,
-			)
-		})
-}
 
 func NewHandlers(repo storage.Repositories) *Handlers {
 	h := &Handlers{}
@@ -152,9 +103,9 @@ func NewURLRouter() chi.Router {
 	hs := NewHandlers(&storage.Repo)
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", HandlerWithLogging(hs.postURL))
-		r.Get("/{shortURL}", HandlerWithLogging(hs.getURL))
-		r.Post("/api/shorten", HandlerWithLogging(hs.postJSON))
+		r.Post("/", logger.HandlerWithLogging(compressing.HandlerWithGzipCompression(hs.postURL)))
+		r.Get("/{shortURL}", logger.HandlerWithLogging(compressing.HandlerWithGzipCompression(hs.getURL)))
+		r.Post("/api/shorten", logger.HandlerWithLogging(compressing.HandlerWithGzipCompression(hs.postJSON)))
 	})
 	return r
 }
