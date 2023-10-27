@@ -1,36 +1,33 @@
 package storage
 
-import "strconv"
+import (
+	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
+)
 
 var inc int
 
-type URLs struct {
-	originalURLs map[string]string
-}
-
 type Repositories interface {
 	GetURL(shortURL string) (originURL string, ok bool)
-	AddURL(originURL string) (shortURL string)
+	AddURL(originURL string) (shortURL string, err error)
+	Close() error
 }
 
-var Repo URLs
+func NewURLs(flags config.Config) (Repositories, error) {
+	if flags.FileName == "" {
+		mapURL := make(map[string]string)
+		mapURL["EwHXdJfB"] = "https://practicum.yandex.ru/"
+		return &MapURLs{
+			originalURLs: mapURL,
+		}, nil
+	}
 
-func init() {
-	inc = 100
-	Repo.originalURLs = make(map[string]string)
-	Repo.originalURLs["EwHXdJfB"] = "https://practicum.yandex.ru/"
-}
-
-func (urls *URLs) GetURL(shortURL string) (originURL string, ok bool) {
-	// получить длинный урл
-	originURL, ok = urls.originalURLs[shortURL]
-	return originURL, ok
-}
-
-func (urls *URLs) AddURL(originURL string) (shortURL string) {
-	// добавить новый урл
-	inc++
-	short := strconv.Itoa(inc)
-	urls.originalURLs[short] = originURL
-	return short
+	fw, err := NewFileWork(flags.FileName)
+	if err != nil {
+		return nil, err
+	}
+	fUrls, err := NewFileURLs(fw)
+	if err != nil {
+		return nil, err
+	}
+	return fUrls, nil
 }

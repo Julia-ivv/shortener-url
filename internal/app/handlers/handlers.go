@@ -37,7 +37,11 @@ func (h *Handlers) postURL(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "request with empty body", http.StatusBadRequest)
 		return
 	}
-	shortURL := h.repo.AddURL(string(postURL))
+	shortURL, err := h.repo.AddURL(string(postURL))
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write([]byte(config.Flags.URL + "/" + shortURL))
@@ -69,7 +73,11 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	json.Unmarshal(reqJSON, &reqURL)
-	shortURL := h.repo.AddURL(string(reqURL.URL))
+	shortURL, err := h.repo.AddURL(string(reqURL.URL))
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	resp, err := json.Marshal(Response{Result: config.Flags.URL + "/" + string(shortURL)})
 	if err != nil {
@@ -99,8 +107,8 @@ func (h *Handlers) getURL(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func NewURLRouter() chi.Router {
-	hs := NewHandlers(&storage.Repo)
+func NewURLRouter(repo storage.Repositories) chi.Router {
+	hs := NewHandlers(repo)
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", logger.HandlerWithLogging(compressing.HandlerWithGzipCompression(hs.postURL)))

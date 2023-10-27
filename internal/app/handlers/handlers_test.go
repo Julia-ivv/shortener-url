@@ -27,12 +27,16 @@ func (urls *testURLs) GetURL(shortURL string) (originURL string, ok bool) {
 	return originURL, ok
 }
 
-func (urls *testURLs) AddURL(originURL string) (shortURL string) {
+func (urls *testURLs) AddURL(originURL string) (shortURL string, err error) {
 	// добавить новый урл
 	inc++
 	short := strconv.Itoa(inc)
 	urls.originalURLs[short] = originURL
-	return short
+	return short, nil
+}
+
+func (urls *testURLs) Close() error {
+	return nil
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
