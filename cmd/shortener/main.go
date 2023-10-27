@@ -13,10 +13,10 @@ func main() {
 	var err error
 	config.Flags = *config.NewConfig()
 	repo, err := storage.NewURLs(config.Flags)
-	defer repo.Close()
 	if err != nil {
 		logger.ZapSugar.Fatal(err)
 	}
+	defer repo.Close()
 
 	logger.ZapSugar = logger.NewLogger()
 	logger.ZapSugar.Infow("Starting server", "addr", config.Flags.Host)
