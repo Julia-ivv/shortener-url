@@ -5,9 +5,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/compressing"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/middleware"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 )
@@ -15,12 +14,14 @@ import (
 type (
 	Handlers struct {
 		repo storage.Repositories
+		cfg  config.Flags
 	}
 )
 
-func NewHandlers(repo storage.Repositories) *Handlers {
+func NewHandlers(repo storage.Repositories, cfg config.Flags) *Handlers {
 	h := &Handlers{}
 	h.repo = repo
+	h.cfg = cfg
 	return h
 }
 
@@ -44,18 +45,18 @@ func (h *Handlers) postURL(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write([]byte(config.Flags.URL + "/" + shortURL))
+	_, err = res.Write([]byte(h.cfg.URL + "/" + shortURL))
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 }
 
-type Request struct {
+type RequestURL struct {
 	URL string `json:"url"`
 }
 
-type Response struct {
+type ResponseURL struct {
 	Result string `json:"result"`
 }
 
@@ -67,7 +68,7 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var reqURL Request
+	var reqURL RequestURL
 	if len(reqJSON) == 0 {
 		http.Error(res, "request with empty body", http.StatusBadRequest)
 		return
@@ -79,7 +80,7 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	resp, err := json.Marshal(Response{Result: config.Flags.URL + "/" + string(shortURL)})
+	resp, err := json.Marshal(ResponseURL{Result: h.cfg.URL + "/" + string(shortURL)})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -107,13 +108,13 @@ func (h *Handlers) getURL(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func NewURLRouter(repo storage.Repositories) chi.Router {
-	hs := NewHandlers(repo)
+func NewURLRouter(repo storage.Repositories, cfg config.Flags) chi.Router {
+	hs := NewHandlers(repo, cfg)
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", logger.HandlerWithLogging(compressing.HandlerWithGzipCompression(hs.postURL)))
-		r.Get("/{shortURL}", logger.HandlerWithLogging(compressing.HandlerWithGzipCompression(hs.getURL)))
-		r.Post("/api/shorten", logger.HandlerWithLogging(compressing.HandlerWithGzipCompression(hs.postJSON)))
+		r.Post("/", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(hs.postURL)))
+		r.Get("/{shortURL}", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(hs.getURL)))
+		r.Post("/api/shorten", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(hs.postJSON)))
 	})
 	return r
 }

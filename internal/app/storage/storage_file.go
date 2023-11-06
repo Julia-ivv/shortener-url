@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"os"
-
-	"github.com/Julia-ivv/shortener-url.git/internal/app/tools"
 )
 
 type URL struct {
@@ -13,48 +11,36 @@ type URL struct {
 	OriginalURL string `json:"original_url"`
 }
 
-type FileWork struct {
-	file    *os.File
-	writer  *bufio.Writer
-	scanner *bufio.Scanner
-}
-
 type FileURLs struct {
-	file *FileWork
-	Urls []URL
+	fileName string
+	Urls     []URL
 }
 
-func NewFileWork(fileName string) (*FileWork, error) {
-	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+func NewFileURLs(fileName string) (*FileURLs, error) {
+	urls := []URL{}
+	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
-	return &FileWork{
-		file:    file,
-		writer:  bufio.NewWriter(file),
-		scanner: bufio.NewScanner(file),
-	}, nil
-}
-
-func NewFileURLs(fw *FileWork) (*FileURLs, error) {
-	urls := []URL{}
-	for fw.scanner.Scan() {
+	scan := bufio.NewScanner(file)
+	for scan.Scan() {
 		url := URL{}
-		data := fw.scanner.Bytes()
+		data := scan.Bytes()
 		err := json.Unmarshal(data, &url)
 		if err != nil {
 			return nil, err
 		}
 		urls = append(urls, url)
 	}
-	if err := fw.scanner.Err(); err != nil {
+	if err := scan.Err(); err != nil {
 		return nil, err
 	}
 
 	return &FileURLs{
-		file: fw,
-		Urls: urls,
+		fileName: fileName,
+		Urls:     urls,
 	}, nil
 }
 
@@ -68,7 +54,7 @@ func (f *FileURLs) GetURL(shortURL string) (originURL string, ok bool) {
 }
 
 func (f *FileURLs) AddURL(originURL string) (shortURL string, err error) {
-	short := tools.GenerateRandomString(tools.LengthShortURL)
+	short := GenerateRandomString(LengthShortURL)
 	url := URL{
 		ShortURL:    short,
 		OriginalURL: originURL,
@@ -76,20 +62,23 @@ func (f *FileURLs) AddURL(originURL string) (shortURL string, err error) {
 
 	f.Urls = append(f.Urls, url)
 
+	file, err := os.OpenFile(f.fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	wr := bufio.NewWriter(file)
 	data, err := json.Marshal(&url)
 	if err != nil {
 		return "", err
 	}
-	if _, err := f.file.writer.Write(data); err != nil {
+	if _, err := wr.Write(data); err != nil {
 		return "", err
 	}
-	if err := f.file.writer.WriteByte('\n'); err != nil {
+	if err := wr.WriteByte('\n'); err != nil {
 		return "", err
 	}
 
-	return short, f.file.writer.Flush()
-}
-
-func (f *FileURLs) Close() error {
-	return f.file.file.Close()
+	return short, wr.Flush()
 }

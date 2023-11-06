@@ -8,12 +8,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var inc int
+var cfg config.Flags
+
+func Init() {
+	cfg = *config.NewConfig()
+}
 
 type testURLs struct {
 	originalURLs map[string]string
@@ -33,10 +39,6 @@ func (urls *testURLs) AddURL(originURL string) (shortURL string, err error) {
 	short := strconv.Itoa(inc)
 	urls.originalURLs[short] = originURL
 	return short, nil
-}
-
-func (urls *testURLs) Close() error {
-	return nil
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
@@ -62,7 +64,7 @@ func TestHandlerPost(t *testing.T) {
 	testRepo.originalURLs = make(map[string]string)
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo)
+	hs := NewHandlers(&testRepo, cfg)
 	router.Post("/", hs.postURL)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -113,7 +115,7 @@ func TestHandlerGet(t *testing.T) {
 	testRepo.originalURLs["EwH"] = "https://practicum.yandex.ru/"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo)
+	hs := NewHandlers(&testRepo, cfg)
 	router.Get("/{shortURL}", hs.getURL)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -153,7 +155,7 @@ func TestHandlerPostJSON(t *testing.T) {
 	testRepo.originalURLs = make(map[string]string)
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo)
+	hs := NewHandlers(&testRepo, cfg)
 	router.Post("/api/shorten", hs.postJSON)
 	ts := httptest.NewServer(router)
 	defer ts.Close()

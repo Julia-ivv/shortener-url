@@ -10,22 +10,21 @@ import (
 )
 
 func main() {
-	var err error
-	config.Flags = *config.NewConfig()
-	repo, err := storage.NewURLs(config.Flags)
+	cfg := config.NewConfig()
+
+	logger.ZapSugar = logger.NewLogger()
+	logger.ZapSugar.Infow("Starting server", "addr", cfg.Host)
+	logger.ZapSugar.Infow("flags",
+		"base url", cfg.URL,
+		"filename", cfg.FileName,
+	)
+
+	repo, err := storage.NewURLs(*cfg)
 	if err != nil {
 		logger.ZapSugar.Fatal(err)
 	}
-	defer repo.Close()
 
-	logger.ZapSugar = logger.NewLogger()
-	logger.ZapSugar.Infow("Starting server", "addr", config.Flags.Host)
-	logger.ZapSugar.Infow("flags",
-		"base url", config.Flags.URL,
-		"filename", config.Flags.FileName,
-	)
-
-	err = http.ListenAndServe(config.Flags.Host, handlers.NewURLRouter(repo))
+	err = http.ListenAndServe(cfg.Host, handlers.NewURLRouter(repo, *cfg))
 	if err != nil {
 		logger.ZapSugar.Fatalw(err.Error(), "event", "start server")
 	}

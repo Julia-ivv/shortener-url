@@ -6,16 +6,14 @@ import (
 	"github.com/caarlos0/env"
 )
 
-type Config struct {
+type Flags struct {
 	Host     string `env:"SERVER_ADDRESS"`    // -a адрес запуска HTTP-сервера, например localhost:8080
 	URL      string `env:"BASE_URL"`          // -b базовый адрес результирующего сокращённого URL, например  http://localhost:8080
 	FileName string `env:"FILE_STORAGE_PATH"` // -f полное имя файла, куда сохраняются данные в формате JSON
 }
 
-var Flags Config
-
-func NewConfig() *Config {
-	c := &Config{}
+func NewConfig() *Flags {
+	c := &Flags{}
 
 	flag.StringVar(&c.Host, "a", ":8080", "HTTP server start address")
 	flag.StringVar(&c.URL, "b", "http://localhost:8080", "base address of the resulting URL")

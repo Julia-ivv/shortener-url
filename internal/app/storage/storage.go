@@ -9,10 +9,9 @@ var inc int
 type Repositories interface {
 	GetURL(shortURL string) (originURL string, ok bool)
 	AddURL(originURL string) (shortURL string, err error)
-	Close() error
 }
 
-func NewURLs(flags config.Config) (Repositories, error) {
+func NewURLs(flags config.Flags) (Repositories, error) {
 	if flags.FileName == "" {
 		mapURL := make(map[string]string)
 		mapURL["EwHXdJfB"] = "https://practicum.yandex.ru/"
@@ -21,11 +20,7 @@ func NewURLs(flags config.Config) (Repositories, error) {
 		}, nil
 	}
 
-	fw, err := NewFileWork(flags.FileName)
-	if err != nil {
-		return nil, err
-	}
-	fUrls, err := NewFileURLs(fw)
+	fUrls, err := NewFileURLs(flags.FileName)
 	if err != nil {
 		return nil, err
 	}
