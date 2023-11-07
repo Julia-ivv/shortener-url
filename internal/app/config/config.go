@@ -6,37 +6,21 @@ import (
 	"github.com/caarlos0/env"
 )
 
-type Config struct {
-	Host string `env:"SERVER_ADDRESS"` // -a адрес запуска HTTP-сервера например localhost:8080
-	URL  string `env:"BASE_URL"`       // -b базовый адрес результирующего сокращённого URL, например  http://localhost:8080
+type Flags struct {
+	Host     string `env:"SERVER_ADDRESS"`    // -a адрес запуска HTTP-сервера, например localhost:8080
+	URL      string `env:"BASE_URL"`          // -b базовый адрес результирующего сокращённого URL, например  http://localhost:8080
+	FileName string `env:"FILE_STORAGE_PATH"` // -f полное имя файла, куда сохраняются данные в формате JSON
 }
 
-type ConfigBuilder struct {
-	config Config
-}
+func NewConfig() *Flags {
+	c := &Flags{}
 
-var Flags Config
-
-func (cb ConfigBuilder) SetHost(host string) ConfigBuilder {
-	cb.config.Host = host
-	return cb
-}
-
-func (cb ConfigBuilder) SetURL(url string) ConfigBuilder {
-	cb.config.URL = url
-	return cb
-}
-
-func InitConfigFromFlags() Config {
-	var host string
-	var url string
-	var cb ConfigBuilder
-
-	flag.StringVar(&host, "a", ":8080", "HTTP server start address")
-	flag.StringVar(&url, "b", "http://localhost:8080", "base address of the resulting URL")
+	flag.StringVar(&c.Host, "a", ":8080", "HTTP server start address")
+	flag.StringVar(&c.URL, "b", "http://localhost:8080", "base address of the resulting URL")
+	flag.StringVar(&c.FileName, "f", "/tmp/short-url-db.json", "full filename to save URLs")
 	flag.Parse()
-	cb = cb.SetHost(host).SetURL(url)
-	env.Parse(&cb.config)
 
-	return cb.config
+	env.Parse(c)
+
+	return c
 }
