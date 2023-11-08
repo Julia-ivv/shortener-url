@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,8 @@ import (
 var inc int
 var cfg config.Flags
 
+var testRepo storage.Stor
+
 func Init() {
 	cfg = *config.NewConfig()
 }
@@ -24,8 +27,6 @@ func Init() {
 type testURLs struct {
 	originalURLs map[string]string
 }
-
-var testRepo testURLs
 
 func (urls *testURLs) GetURL(shortURL string) (originURL string, ok bool) {
 	// получить длинный урл
@@ -61,10 +62,13 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 }
 
 func TestHandlerPost(t *testing.T) {
-	testRepo.originalURLs = make(map[string]string)
+	testRepo := storage.Stor{
+		Repo:     &testURLs{originalURLs: make(map[string]string)},
+		DBHandle: nil,
+	}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg)
 	router.Post("/", hs.postURL)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -111,11 +115,15 @@ func TestHandlerPost(t *testing.T) {
 }
 
 func TestHandlerGet(t *testing.T) {
-	testRepo.originalURLs = make(map[string]string)
-	testRepo.originalURLs["EwH"] = "https://practicum.yandex.ru/"
+	testR := make(map[string]string)
+	testR["EwH"] = "https://practicum.yandex.ru/"
+	testRepo := storage.Stor{
+		Repo:     &testURLs{originalURLs: testR},
+		DBHandle: nil,
+	}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg)
 	router.Get("/{shortURL}", hs.getURL)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -152,10 +160,13 @@ func TestHandlerGet(t *testing.T) {
 }
 
 func TestHandlerPostJSON(t *testing.T) {
-	testRepo.originalURLs = make(map[string]string)
+	testRepo := storage.Stor{
+		Repo:     &testURLs{originalURLs: make(map[string]string)},
+		DBHandle: nil,
+	}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg)
 	router.Post("/api/shorten", hs.postJSON)
 	ts := httptest.NewServer(router)
 	defer ts.Close()

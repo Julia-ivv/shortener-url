@@ -17,11 +17,16 @@ func main() {
 	logger.ZapSugar.Infow("flags",
 		"base url", cfg.URL,
 		"filename", cfg.FileName,
+		"db dsn", cfg.DBDSN,
 	)
 
 	repo, err := storage.NewURLs(*cfg)
 	if err != nil {
 		logger.ZapSugar.Fatal(err)
+	}
+
+	if repo.DBHandle != nil {
+		defer repo.DBHandle.Close()
 	}
 
 	err = http.ListenAndServe(cfg.Host, handlers.NewURLRouter(repo, *cfg))
