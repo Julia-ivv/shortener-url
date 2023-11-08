@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -28,13 +29,13 @@ type testURLs struct {
 	originalURLs map[string]string
 }
 
-func (urls *testURLs) GetURL(shortURL string) (originURL string, ok bool) {
+func (urls *testURLs) GetURL(ctx context.Context, shortURL string) (originURL string, ok bool) {
 	// получить длинный урл
 	originURL, ok = urls.originalURLs[shortURL]
 	return originURL, ok
 }
 
-func (urls *testURLs) AddURL(originURL string) (shortURL string, err error) {
+func (urls *testURLs) AddURL(ctx context.Context, originURL string) (shortURL string, err error) {
 	// добавить новый урл
 	inc++
 	short := strconv.Itoa(inc)

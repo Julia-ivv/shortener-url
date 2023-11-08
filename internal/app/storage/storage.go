@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
@@ -9,8 +10,8 @@ import (
 var inc int
 
 type Repositories interface {
-	GetURL(shortURL string) (originURL string, ok bool)
-	AddURL(originURL string) (shortURL string, err error)
+	GetURL(ctx context.Context, shortURL string) (originURL string, ok bool)
+	AddURL(ctx context.Context, originURL string) (shortURL string, err error)
 }
 
 type Stor struct {
@@ -21,19 +22,23 @@ type Stor struct {
 func NewURLs(flags config.Flags) (Stor, error) {
 	if flags.DBDSN != "" {
 		db, err := NewConnectDB(flags.DBDSN)
+		if err != nil {
+			return Stor{}, err
+		}
+		err = db.dbInit()
+		if err != nil {
+			return Stor{}, err
+		}
 		return Stor{
 			Repo:     db,
 			DBHandle: db.dbHandle,
-		}, err
+		}, nil
 	}
 
 	if flags.FileName != "" {
 		fUrls, err := NewFileURLs(flags.FileName)
 		if err != nil {
-			return Stor{
-				Repo:     nil,
-				DBHandle: nil,
-			}, err
+			return Stor{}, err
 		}
 		return Stor{
 			Repo:     fUrls,

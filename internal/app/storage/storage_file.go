@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"os"
 )
@@ -44,7 +45,7 @@ func NewFileURLs(fileName string) (*FileURLs, error) {
 	}, nil
 }
 
-func (f *FileURLs) GetURL(shortURL string) (originURL string, ok bool) {
+func (f *FileURLs) GetURL(_ context.Context, shortURL string) (originURL string, ok bool) {
 	for _, v := range f.Urls {
 		if v.ShortURL == shortURL {
 			return v.OriginalURL, true
@@ -53,7 +54,7 @@ func (f *FileURLs) GetURL(shortURL string) (originURL string, ok bool) {
 	return "", false
 }
 
-func (f *FileURLs) AddURL(originURL string) (shortURL string, err error) {
+func (f *FileURLs) AddURL(_ context.Context, originURL string) (shortURL string, err error) {
 	short := GenerateRandomString(LengthShortURL)
 	url := URL{
 		ShortURL:    short,

@@ -40,7 +40,7 @@ func (h *Handlers) postURL(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "request with empty body", http.StatusBadRequest)
 		return
 	}
-	shortURL, err := h.stor.Repo.AddURL(string(postURL))
+	shortURL, err := h.stor.Repo.AddURL(req.Context(), string(postURL))
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -76,7 +76,7 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	json.Unmarshal(reqJSON, &reqURL)
-	shortURL, err := h.stor.Repo.AddURL(string(reqURL.URL))
+	shortURL, err := h.stor.Repo.AddURL(req.Context(), string(reqURL.URL))
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -100,7 +100,7 @@ func (h *Handlers) getURL(res http.ResponseWriter, req *http.Request) {
 	// получает из хранилища длинный урл по shortURL из параметра запроса
 	// возвращает длинный урл в Location
 	shortURL := chi.URLParam(req, "shortURL")
-	originURL, ok := h.stor.Repo.GetURL(shortURL)
+	originURL, ok := h.stor.Repo.GetURL(req.Context(), shortURL)
 	if !ok {
 		http.Error(res, "URL not found", http.StatusBadRequest)
 		return
