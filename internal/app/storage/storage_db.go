@@ -22,7 +22,7 @@ func NewConnectDB(DBDSN string) (*DBURLs, error) {
 	return &DBURLs{dbHandle: db}, nil
 }
 
-func (db *DBURLs) dbInit() error {
+func (db *DBURLs) CreateAllTables() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -55,7 +55,10 @@ func (db *DBURLs) AddURL(ctx context.Context, originURL string) (shortURL string
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
-	shortURL = GenerateRandomString(LengthShortURL)
+	shortURL, err = GenerateRandomString(LengthShortURL)
+	if err != nil {
+		return "", err
+	}
 	result, err := db.dbHandle.ExecContext(ctx,
 		"INSERT INTO urls VALUES ($1, $2)", shortURL, originURL)
 	if err != nil {
@@ -70,4 +73,44 @@ func (db *DBURLs) AddURL(ctx context.Context, originURL string) (shortURL string
 		return "", fmt.Errorf("expected to affect 1 row, affected %d", rows)
 	}
 	return shortURL, nil
+}
+
+func (db *DBURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string) (shortURLBatch []ResponseBatch, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	tx, err := db.dbHandle.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range originURLBatch {
+		shortURL, err := GenerateRandomString(LengthShortURL)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		result, err := tx.ExecContext(ctx, "INSERT INTO urls VALUES ($1, $2)", shortURL, v.OriginalURL)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		rows, err := result.RowsAffected()
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		if rows != 1 {
+			tx.Rollback()
+			return nil, fmt.Errorf("expected to affect 1 row, affected %d", rows)
+		}
+
+		shortURLBatch = append(shortURLBatch, ResponseBatch{
+			CorrelationId: v.CorrelationId,
+			ShortURL:      baseURL + shortURL,
+		})
+	}
+
+	return shortURLBatch, tx.Commit()
 }

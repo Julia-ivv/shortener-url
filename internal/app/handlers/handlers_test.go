@@ -43,6 +43,23 @@ func (urls *testURLs) AddURL(ctx context.Context, originURL string) (shortURL st
 	return short, nil
 }
 
+func (urls *testURLs) AddBatch(ctx context.Context, originURLBatch []storage.RequestBatch, baseURL string) (shortURLBatch []storage.ResponseBatch, err error) {
+	allUrls := make(map[string]string)
+	for _, v := range originURLBatch {
+		sURL := strconv.Itoa(inc)
+		shortURLBatch = append(shortURLBatch, storage.ResponseBatch{
+			CorrelationId: v.CorrelationId,
+			ShortURL:      baseURL + sURL,
+		})
+		allUrls[sURL] = v.OriginalURL
+	}
+
+	for k, v := range allUrls {
+		urls.originalURLs[k] = v
+	}
+	return shortURLBatch, nil
+}
+
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
 	client := ts.Client()
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {

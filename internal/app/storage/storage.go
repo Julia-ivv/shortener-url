@@ -9,9 +9,20 @@ import (
 
 var inc int
 
+type RequestBatch struct {
+	CorrelationId string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type ResponseBatch struct {
+	CorrelationId string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 type Repositories interface {
 	GetURL(ctx context.Context, shortURL string) (originURL string, ok bool)
 	AddURL(ctx context.Context, originURL string) (shortURL string, err error)
+	AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string) (shortURLBatch []ResponseBatch, err error)
 }
 
 type Stor struct {
@@ -25,7 +36,7 @@ func NewURLs(flags config.Flags) (Stor, error) {
 		if err != nil {
 			return Stor{}, err
 		}
-		err = db.dbInit()
+		err = db.CreateAllTables()
 		if err != nil {
 			return Stor{}, err
 		}
@@ -46,10 +57,8 @@ func NewURLs(flags config.Flags) (Stor, error) {
 		}, nil
 	}
 
-	mapURL := make(map[string]string)
-	mapURL["EwHXdJfB"] = "https://practicum.yandex.ru/"
 	return Stor{
-		Repo:     &MapURLs{originalURLs: mapURL},
+		Repo:     NewMapURLs(),
 		DBHandle: nil,
 	}, nil
 }

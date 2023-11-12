@@ -96,6 +96,49 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (h *Handlers) postBatch(res http.ResponseWriter, req *http.Request) {
+	// в теле запроса множество урлов в слайсе
+	// в ответе аналогичный слайс с короткими урлами
+	reqJSON, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var reqBatch []storage.RequestBatch
+	if len(reqJSON) == 0 {
+		http.Error(res, "request with empty body", http.StatusBadRequest)
+		return
+	}
+	err = json.Unmarshal(reqJSON, &reqBatch)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(reqBatch) == 0 {
+		http.Error(res, "empty request", http.StatusBadRequest)
+		return
+	}
+	resBatch, err := h.stor.Repo.AddBatch(req.Context(), reqBatch, h.cfg.URL+"/")
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := json.Marshal(resBatch)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	_, err = res.Write(resp)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+}
+
 func (h *Handlers) getURL(res http.ResponseWriter, req *http.Request) {
 	// получает из хранилища длинный урл по shortURL из параметра запроса
 	// возвращает длинный урл в Location
@@ -135,6 +178,7 @@ func NewURLRouter(repo storage.Stor, cfg config.Flags) chi.Router {
 		r.Post("/", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(hs.postURL)))
 		r.Get("/{shortURL}", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(hs.getURL)))
 		r.Post("/api/shorten", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(hs.postJSON)))
+		r.Post("/api/shorten/batch", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(hs.postBatch)))
 		r.Get("/ping", hs.getPingDB)
 	})
 	return r
