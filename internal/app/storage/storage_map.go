@@ -47,7 +47,7 @@ func (urls *MapURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch
 			return nil, err
 		}
 		shortURLBatch = append(shortURLBatch, ResponseBatch{
-			CorrelationId: v.CorrelationId,
+			CorrelationID: v.CorrelationID,
 			ShortURL:      baseURL + sURL,
 		})
 		allUrls[sURL] = v.OriginalURL

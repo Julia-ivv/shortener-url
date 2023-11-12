@@ -104,7 +104,7 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 			return nil, err
 		}
 		shortURLBatch = append(shortURLBatch, ResponseBatch{
-			CorrelationId: v.CorrelationId,
+			CorrelationID: v.CorrelationID,
 			ShortURL:      baseURL + sURL,
 		})
 		url := URL{

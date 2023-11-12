@@ -107,7 +107,7 @@ func (db *DBURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, b
 		}
 
 		shortURLBatch = append(shortURLBatch, ResponseBatch{
-			CorrelationId: v.CorrelationId,
+			CorrelationID: v.CorrelationID,
 			ShortURL:      baseURL + shortURL,
 		})
 	}

@@ -48,7 +48,7 @@ func (urls *testURLs) AddBatch(ctx context.Context, originURLBatch []storage.Req
 	for _, v := range originURLBatch {
 		sURL := strconv.Itoa(inc)
 		shortURLBatch = append(shortURLBatch, storage.ResponseBatch{
-			CorrelationId: v.CorrelationId,
+			CorrelationID: v.CorrelationID,
 			ShortURL:      baseURL + sURL,
 		})
 		allUrls[sURL] = v.OriginalURL
