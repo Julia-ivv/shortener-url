@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"github.com/Julia-ivv/shortener-url.git/internal/app/middleware"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type (
@@ -42,11 +45,18 @@ func (h *Handlers) postURL(res http.ResponseWriter, req *http.Request) {
 	}
 	shortURL, err := h.stor.Repo.AddURL(req.Context(), string(postURL))
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			res.Header().Set("Content-Type", "text/plain")
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		res.Header().Set("Content-Type", "text/plain")
+		res.WriteHeader(http.StatusCreated)
 	}
-	res.Header().Set("Content-Type", "text/plain")
-	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write([]byte(h.cfg.URL + "/" + shortURL))
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -77,9 +87,19 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 	}
 	json.Unmarshal(reqJSON, &reqURL)
 	shortURL, err := h.stor.Repo.AddURL(req.Context(), string(reqURL.URL))
+
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			res.Header().Set("Content-Type", "application/json")
+			res.WriteHeader(http.StatusConflict)
+		} else {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusCreated)
 	}
 
 	resp, err := json.Marshal(ResponseURL{Result: h.cfg.URL + "/" + string(shortURL)})
@@ -87,8 +107,6 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write(resp)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)

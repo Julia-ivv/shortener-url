@@ -3,9 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -62,7 +65,18 @@ func (db *DBURLs) AddURL(ctx context.Context, originURL string) (shortURL string
 	result, err := db.dbHandle.ExecContext(ctx,
 		"INSERT INTO urls VALUES ($1, $2)", shortURL, originURL)
 	if err != nil {
-		return "", err
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			row := db.dbHandle.QueryRowContext(ctx,
+				"SELECT short_url FROM urls WHERE original_url=$1", originURL)
+			errScan := row.Scan(&shortURL)
+			if errScan != nil {
+				return "", err
+			}
+			return shortURL, err
+		} else {
+			return "", err
+		}
 	}
 
 	rows, err := result.RowsAffected()
