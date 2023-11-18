@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,6 +18,8 @@ import (
 
 var inc int
 var cfg config.Flags
+
+var testRepo storage.Stor
 
 func Init() {
 	cfg = *config.NewConfig()
@@ -25,20 +29,35 @@ type testURLs struct {
 	originalURLs map[string]string
 }
 
-var testRepo testURLs
-
-func (urls *testURLs) GetURL(shortURL string) (originURL string, ok bool) {
+func (urls *testURLs) GetURL(ctx context.Context, shortURL string) (originURL string, ok bool) {
 	// получить длинный урл
 	originURL, ok = urls.originalURLs[shortURL]
 	return originURL, ok
 }
 
-func (urls *testURLs) AddURL(originURL string) (shortURL string, err error) {
+func (urls *testURLs) AddURL(ctx context.Context, originURL string) (shortURL string, err error) {
 	// добавить новый урл
 	inc++
 	short := strconv.Itoa(inc)
 	urls.originalURLs[short] = originURL
 	return short, nil
+}
+
+func (urls *testURLs) AddBatch(ctx context.Context, originURLBatch []storage.RequestBatch, baseURL string) (shortURLBatch []storage.ResponseBatch, err error) {
+	allUrls := make(map[string]string)
+	for _, v := range originURLBatch {
+		sURL := strconv.Itoa(inc)
+		shortURLBatch = append(shortURLBatch, storage.ResponseBatch{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      baseURL + sURL,
+		})
+		allUrls[sURL] = v.OriginalURL
+	}
+
+	for k, v := range allUrls {
+		urls.originalURLs[k] = v
+	}
+	return shortURLBatch, nil
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
@@ -61,10 +80,13 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 }
 
 func TestHandlerPost(t *testing.T) {
-	testRepo.originalURLs = make(map[string]string)
+	testRepo := storage.Stor{
+		Repo:     &testURLs{originalURLs: make(map[string]string)},
+		DBHandle: nil,
+	}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg)
 	router.Post("/", hs.postURL)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -111,11 +133,15 @@ func TestHandlerPost(t *testing.T) {
 }
 
 func TestHandlerGet(t *testing.T) {
-	testRepo.originalURLs = make(map[string]string)
-	testRepo.originalURLs["EwH"] = "https://practicum.yandex.ru/"
+	testR := make(map[string]string)
+	testR["EwH"] = "https://practicum.yandex.ru/"
+	testRepo := storage.Stor{
+		Repo:     &testURLs{originalURLs: testR},
+		DBHandle: nil,
+	}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg)
 	router.Get("/{shortURL}", hs.getURL)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -152,10 +178,13 @@ func TestHandlerGet(t *testing.T) {
 }
 
 func TestHandlerPostJSON(t *testing.T) {
-	testRepo.originalURLs = make(map[string]string)
+	testRepo := storage.Stor{
+		Repo:     &testURLs{originalURLs: make(map[string]string)},
+		DBHandle: nil,
+	}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(&testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg)
 	router.Post("/api/shorten", hs.postJSON)
 	ts := httptest.NewServer(router)
 	defer ts.Close()

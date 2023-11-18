@@ -1,21 +1,26 @@
 package storage
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"encoding/base64"
 )
 
 const (
 	letterBytes    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-	LengthShortURL = 5
+	LengthShortURL = 4
 )
 
-func GenerateRandomString(length int) string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	result := make([]byte, length)
-	for i := 0; i < length; i++ {
-		result[i] = letterBytes[r.Intn(len(letterBytes))]
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
 	}
 
-	return string(result)
+	return b, nil
+}
+
+func GenerateRandomString(length int) (string, error) {
+	b, err := GenerateRandomBytes(length)
+	return base64.RawURLEncoding.EncodeToString(b), err
 }
