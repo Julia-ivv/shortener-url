@@ -5,10 +5,7 @@ import (
 	"encoding/base64"
 )
 
-const (
-	letterBytes    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-	LengthShortURL = 4
-)
+const LengthShortURL = 4
 
 func GenerateRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
