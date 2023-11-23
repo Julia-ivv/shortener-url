@@ -216,9 +216,12 @@ func (h *Handlers) getUserURLs(res http.ResponseWriter, req *http.Request) {
 	id := value.(int)
 
 	allURLs, err := h.stor.Repo.GetAllUserURLs(req.Context(), h.cfg.URL+"/", id)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if len(allURLs) == 0 {
-		//http.Error(res, "204 No Content", http.StatusNoContent)
-		http.Error(res, "401 Unauthorized", http.StatusUnauthorized) // под автотесты
+		http.Error(res, "204 No Content", http.StatusNoContent)
 		return
 	}
 
