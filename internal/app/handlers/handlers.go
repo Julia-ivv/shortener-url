@@ -34,7 +34,7 @@ func (h *Handlers) postURL(res http.ResponseWriter, req *http.Request) {
 	// получает из тела запроса длинный урл - postURL
 	// добавляет его в хранилище
 	// возвращает в теле ответа короткий урл
-	value := req.Context().Value(authorizer.USER_CONTEXT_KEY)
+	value := req.Context().Value(authorizer.UserContextKey)
 	if value == nil {
 		http.Error(res, "500 internal server error", http.StatusInternalServerError)
 		return
@@ -82,7 +82,7 @@ type ResponseURL struct {
 func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 	// в теле запроса JSON с длинным урлом
 	// в ответе JSON с коротким урлом
-	value := req.Context().Value(authorizer.USER_CONTEXT_KEY)
+	value := req.Context().Value(authorizer.UserContextKey)
 	if value == nil {
 		http.Error(res, "500 internal server error", http.StatusInternalServerError)
 		return
@@ -131,7 +131,7 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 func (h *Handlers) postBatch(res http.ResponseWriter, req *http.Request) {
 	// в теле запроса множество урлов в слайсе
 	// в ответе аналогичный слайс с короткими урлами
-	value := req.Context().Value(authorizer.USER_CONTEXT_KEY)
+	value := req.Context().Value(authorizer.UserContextKey)
 	if value == nil {
 		http.Error(res, "500 internal server error", http.StatusInternalServerError)
 		return
@@ -181,7 +181,7 @@ func (h *Handlers) postBatch(res http.ResponseWriter, req *http.Request) {
 func (h *Handlers) getURL(res http.ResponseWriter, req *http.Request) {
 	// получает из хранилища длинный урл по shortURL из параметра запроса
 	// возвращает длинный урл в Location
-	value := req.Context().Value(authorizer.USER_CONTEXT_KEY)
+	value := req.Context().Value(authorizer.UserContextKey)
 	if value == nil {
 		http.Error(res, "500 internal server error", http.StatusInternalServerError)
 		return
@@ -208,7 +208,7 @@ func (h *Handlers) getPingDB(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) getUserURLs(res http.ResponseWriter, req *http.Request) {
-	value := req.Context().Value(authorizer.USER_CONTEXT_KEY)
+	value := req.Context().Value(authorizer.UserContextKey)
 	if value == nil {
 		http.Error(res, "500 internal server error", http.StatusInternalServerError)
 		return

@@ -5,24 +5,24 @@ import (
 	"sync"
 )
 
-type url struct {
+type MemURL struct {
 	userID    int
 	shortURL  string
 	originURL string
 }
 
-type MapURLs struct {
+type MemURLs struct {
 	sync.RWMutex
-	originalURLs []url
+	originalURLs []MemURL
 }
 
-func NewMapURLs() *MapURLs {
-	return &MapURLs{
-		originalURLs: make([]url, 0),
+func NewMapURLs() *MemURLs {
+	return &MemURLs{
+		originalURLs: make([]MemURL, 0),
 	}
 }
 
-func (urls *MapURLs) GetURL(ctx context.Context, shortURL string, userID int) (originURL string, ok bool) {
+func (urls *MemURLs) GetURL(ctx context.Context, shortURL string, userID int) (originURL string, ok bool) {
 	// получить длинный урл
 	urls.RLock()
 	defer urls.RUnlock()
@@ -35,7 +35,7 @@ func (urls *MapURLs) GetURL(ctx context.Context, shortURL string, userID int) (o
 	return "", false
 }
 
-func (urls *MapURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
+func (urls *MemURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
 	// добавить новый урл
 	short, err := GenerateRandomString(LengthShortURL)
 	if err != nil {
@@ -45,7 +45,7 @@ func (urls *MapURLs) AddURL(ctx context.Context, originURL string, userID int) (
 	urls.Lock()
 	defer urls.Unlock()
 
-	urls.originalURLs = append(urls.originalURLs, url{
+	urls.originalURLs = append(urls.originalURLs, MemURL{
 		userID:    userID,
 		shortURL:  short,
 		originURL: originURL,
@@ -53,8 +53,8 @@ func (urls *MapURLs) AddURL(ctx context.Context, originURL string, userID int) (
 	return short, nil
 }
 
-func (urls *MapURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error) {
-	allUrls := make([]url, 0)
+func (urls *MemURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error) {
+	allUrls := make([]MemURL, 0)
 	for _, v := range originURLBatch {
 		sURL, err := GenerateRandomString(LengthShortURL)
 		if err != nil {
@@ -64,7 +64,7 @@ func (urls *MapURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch
 			CorrelationID: v.CorrelationID,
 			ShortURL:      baseURL + sURL,
 		})
-		allUrls = append(allUrls, url{
+		allUrls = append(allUrls, MemURL{
 			userID:    userID,
 			shortURL:  sURL,
 			originURL: v.OriginalURL,
@@ -73,14 +73,12 @@ func (urls *MapURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch
 
 	urls.Lock()
 	defer urls.Unlock()
-	for _, v := range allUrls {
-		urls.originalURLs = append(urls.originalURLs, v)
-	}
+	urls.originalURLs = append(urls.originalURLs, allUrls...)
 
 	return shortURLBatch, nil
 }
 
-func (urls *MapURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []UserURL, err error) {
+func (urls *MemURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []UserURL, err error) {
 	urls.RLock()
 	defer urls.RUnlock()
 
@@ -96,10 +94,10 @@ func (urls *MapURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID 
 	return userURLs, nil
 }
 
-func (urls *MapURLs) PingStor(ctx context.Context) error {
+func (urls *MemURLs) PingStor(ctx context.Context) error {
 	return nil
 }
 
-func (urls *MapURLs) Close() error {
+func (urls *MemURLs) Close() error {
 	return nil
 }

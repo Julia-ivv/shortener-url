@@ -7,10 +7,13 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-const SECRET_KEY = "byrhtvtyn"
-const ACCESS_TOKEN = "accessToken"
-const TOKEN_EXP = time.Hour * 3
-const USER_CONTEXT_KEY = "user"
+const SecretKey = "byrhtvtyn"
+const AccessToken = "accessToken"
+const TokenExp = time.Hour * 3
+
+type key string
+
+const UserContextKey key = "user"
 
 type Claims struct {
 	jwt.RegisteredClaims
@@ -25,11 +28,11 @@ func BuildToken() (id int, tokenString string, err error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		Claims{
 			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(TOKEN_EXP)),
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
 			},
 			UserID: id,
 		})
-	tokenString, err = token.SignedString([]byte(SECRET_KEY))
+	tokenString, err = token.SignedString([]byte(SecretKey))
 	if err != nil {
 		return -1, "", err
 	}
@@ -42,7 +45,7 @@ func GetUserIDFromToken(tokenString string) (int, error) {
 	// id и nil, если удалось получить id из токена
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
-		return []byte(SECRET_KEY), nil
+		return []byte(SecretKey), nil
 	})
 	if err != nil {
 		return -1, err

@@ -12,18 +12,18 @@ func HandlerWithAuth(h http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(res http.ResponseWriter, req *http.Request) {
 			var newctx context.Context
-			token, err := req.Cookie(authorizer.ACCESS_TOKEN)
+			token, err := req.Cookie(authorizer.AccessToken)
 			if err != nil {
 				userID, tokenString, err := authorizer.BuildToken()
 				if err != nil {
 					http.Error(res, err.Error(), http.StatusInternalServerError)
 					return
 				}
-				newctx = context.WithValue(req.Context(), authorizer.USER_CONTEXT_KEY, userID)
+				newctx = context.WithValue(req.Context(), authorizer.UserContextKey, userID)
 				http.SetCookie(res, &http.Cookie{
-					Name:     authorizer.ACCESS_TOKEN,
+					Name:     authorizer.AccessToken,
 					Value:    tokenString,
-					Expires:  time.Now().Add(authorizer.TOKEN_EXP),
+					Expires:  time.Now().Add(authorizer.TokenExp),
 					Path:     "/",
 					HttpOnly: true,
 				})
@@ -33,20 +33,20 @@ func HandlerWithAuth(h http.HandlerFunc) http.HandlerFunc {
 					http.Error(res, "401 Unauthorized", http.StatusUnauthorized)
 					return
 				}
+				newctx = context.WithValue(req.Context(), authorizer.UserContextKey, userID)
 				if userID == -1 {
 					userID, tokenString, err := authorizer.BuildToken()
 					if err != nil {
 						http.Error(res, err.Error(), http.StatusInternalServerError)
 						return
 					}
-					newctx = context.WithValue(req.Context(), authorizer.USER_CONTEXT_KEY, userID)
+					newctx = context.WithValue(req.Context(), authorizer.UserContextKey, userID)
 					http.SetCookie(res, &http.Cookie{
-						Name:    authorizer.ACCESS_TOKEN,
+						Name:    authorizer.AccessToken,
 						Value:   tokenString,
-						Expires: time.Now().Add(authorizer.TOKEN_EXP),
+						Expires: time.Now().Add(authorizer.TokenExp),
 					})
 				}
-				newctx = context.WithValue(req.Context(), authorizer.USER_CONTEXT_KEY, userID)
 			}
 
 			h.ServeHTTP(res, req.WithContext(newctx))

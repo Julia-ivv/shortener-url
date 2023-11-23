@@ -35,12 +35,12 @@ func NewConnectDB(DBDSN string) (*DBURLs, error) {
 }
 
 func (db *DBURLs) GetURL(ctx context.Context, shortURL string, userID int) (originURL string, ok bool) {
-	// получить длинный урл
+	// получить длинный урл не учитывая пользователя
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
 	row := db.dbHandle.QueryRowContext(ctx,
-		"SELECT original_url FROM urls WHERE short_url=$1 AND user_id=$2", shortURL, userID)
+		"SELECT original_url FROM urls WHERE short_url=$1", shortURL)
 
 	err := row.Scan(&originURL)
 	if err != nil {
