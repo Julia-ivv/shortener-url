@@ -181,17 +181,15 @@ func (h *Handlers) postBatch(res http.ResponseWriter, req *http.Request) {
 func (h *Handlers) getURL(res http.ResponseWriter, req *http.Request) {
 	// получает из хранилища длинный урл по shortURL из параметра запроса
 	// возвращает длинный урл в Location
-	value := req.Context().Value(authorizer.UserContextKey)
-	if value == nil {
-		http.Error(res, "500 internal server error", http.StatusInternalServerError)
-		return
-	}
-	id := value.(int)
-
+	// не отбирает по пользователю
 	shortURL := chi.URLParam(req, "shortURL")
-	originURL, ok := h.stor.Repo.GetURL(req.Context(), shortURL, id)
+	originURL, isDel, ok := h.stor.Repo.GetURL(req.Context(), shortURL)
 	if !ok {
 		http.Error(res, "URL not found", http.StatusBadRequest)
+		return
+	}
+	if isDel {
+		res.WriteHeader(http.StatusGone)
 		return
 	}
 	res.Header().Set("Location", originURL)
@@ -240,6 +238,37 @@ func (h *Handlers) getUserURLs(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (h *Handlers) deleteUserURLs(res http.ResponseWriter, req *http.Request) {
+	value := req.Context().Value(authorizer.UserContextKey)
+	if value == nil {
+		http.Error(res, "500 internal server error", http.StatusInternalServerError)
+		return
+	}
+	id := value.(int)
+
+	reqJSON, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(reqJSON) == 0 {
+		http.Error(res, "request with empty body", http.StatusBadRequest)
+		return
+	}
+	var reqShortURLs []string
+	err = json.Unmarshal(reqJSON, &reqShortURLs)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	go func() {
+		h.stor.Repo.DeleteUserURLs(req.Context(), reqShortURLs, id)
+	}()
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusAccepted)
+}
+
 func NewURLRouter(repo storage.Stor, cfg config.Flags) chi.Router {
 	hs := NewHandlers(repo, cfg)
 	r := chi.NewRouter()
@@ -249,6 +278,7 @@ func NewURLRouter(repo storage.Stor, cfg config.Flags) chi.Router {
 		r.Post("/api/shorten", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.postJSON))))
 		r.Post("/api/shorten/batch", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.postBatch))))
 		r.Get("/api/user/urls", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.getUserURLs))))
+		r.Delete("/api/user/urls", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.deleteUserURLs))))
 		r.Get("/ping", middleware.HandlerWithLogging(hs.getPingDB))
 	})
 	return r

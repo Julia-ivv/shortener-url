@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Julia-ivv/shortener-url.git/internal/app/channels"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -26,7 +28,7 @@ func NewConnectDB(DBDSN string) (*DBURLs, error) {
 	defer cancel()
 
 	_, err = db.ExecContext(ctx,
-		"CREATE TABLE IF NOT EXISTS urls (user_id integer, short_url text, original_url text, PRIMARY KEY(user_id, original_url))")
+		"CREATE TABLE IF NOT EXISTS urls (user_id integer, short_url text, original_url text, deleted_flag boolean DEFAULT false, PRIMARY KEY(user_id, original_url))")
 	if err != nil {
 		return nil, err
 	}
@@ -34,20 +36,20 @@ func NewConnectDB(DBDSN string) (*DBURLs, error) {
 	return &DBURLs{dbHandle: db}, nil
 }
 
-func (db *DBURLs) GetURL(ctx context.Context, shortURL string, userID int) (originURL string, ok bool) {
+func (db *DBURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
 	// получить длинный урл не учитывая пользователя
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
 	row := db.dbHandle.QueryRowContext(ctx,
-		"SELECT original_url FROM urls WHERE short_url=$1", shortURL)
+		"SELECT original_url, deleted_flag FROM urls WHERE short_url=$1", shortURL)
 
-	err := row.Scan(&originURL)
+	err := row.Scan(&originURL, &isDel)
 	if err != nil {
-		return "", false
+		return "", false, false
 	}
 
-	return originURL, true
+	return originURL, isDel, true
 }
 
 type UserURL struct {
@@ -158,6 +160,31 @@ func (db *DBURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, b
 	}
 
 	return shortURLBatch, tx.Commit()
+}
+
+func (db *DBURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	stmt, err := db.dbHandle.Prepare("UPDATE urls SET deleted_flag = true WHERE user_id = $1 AND short_url = $2")
+	if err != nil {
+		logger.ZapSugar.Infow("prepare context error", err)
+		return err
+	}
+	defer stmt.Close()
+
+	inputCh := channels.Generator(doneCh, delURLs, userID)
+	chans := channels.FanOut(doneCh, inputCh, stmt)
+	resCh := channels.FanIn(stmt, doneCh, chans...)
+	cnt := 0
+	for res := range resCh {
+		if res.Err == nil {
+			cnt += int(res.Rows)
+		}
+	}
+	logger.ZapSugar.Infof("user ID %d - removed %d out of %d", userID, cnt, len(delURLs))
+
+	return nil
 }
 
 func (db *DBURLs) PingStor(ctx context.Context) error {

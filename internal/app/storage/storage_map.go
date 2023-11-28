@@ -22,17 +22,17 @@ func NewMapURLs() *MemURLs {
 	}
 }
 
-func (urls *MemURLs) GetURL(ctx context.Context, shortURL string, userID int) (originURL string, ok bool) {
-	// получить длинный урл
+func (urls *MemURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
+	// получить длинный урл без учета пользователя
 	urls.RLock()
 	defer urls.RUnlock()
 
 	for _, v := range urls.originalURLs {
-		if (v.shortURL == shortURL) && (v.userID == userID) {
-			return v.originURL, true
+		if v.shortURL == shortURL {
+			return v.originURL, false, true
 		}
 	}
-	return "", false
+	return "", false, false
 }
 
 func (urls *MemURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
@@ -92,6 +92,10 @@ func (urls *MemURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID 
 	}
 
 	return userURLs, nil
+}
+
+func (urls *MemURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
+	return nil
 }
 
 func (urls *MemURLs) PingStor(ctx context.Context) error {

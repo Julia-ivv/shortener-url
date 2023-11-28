@@ -19,10 +19,11 @@ type ResponseBatch struct {
 }
 
 type Repositories interface {
-	GetURL(ctx context.Context, shortURL string, userID int) (originURL string, ok bool)
+	GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool)
 	AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error)
 	AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error)
 	GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []UserURL, err error)
+	DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error)
 	PingStor(ctx context.Context) (err error)
 	Close() (err error)
 }

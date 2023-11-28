@@ -38,14 +38,18 @@ type testURLs struct {
 	originalURLs []testURL
 }
 
-func (urls *testURLs) GetURL(ctx context.Context, shortURL string, userID int) (originURL string, ok bool) {
+func (urls *testURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
+	return nil
+}
+
+func (urls *testURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
 	// получить длинный урл
 	for _, v := range urls.originalURLs {
-		if (v.shortURL == shortURL) && (v.userID == userID) {
-			return v.originURL, true
+		if v.shortURL == shortURL {
+			return v.originURL, false, true
 		}
 	}
-	return "", false
+	return "", false, false
 }
 
 func (urls *testURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {

@@ -49,17 +49,17 @@ func NewFileURLs(fileName string) (*FileURLs, error) {
 	}, nil
 }
 
-func (f *FileURLs) GetURL(ctx context.Context, shortURL string, userID int) (originURL string, ok bool) {
+func (f *FileURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
 	// получает урл без учета пользователя
 	f.RLock()
 	defer f.RUnlock()
 
 	for _, v := range f.Urls {
 		if v.ShortURL == shortURL {
-			return v.OriginalURL, true
+			return v.OriginalURL, false, true
 		}
 	}
-	return "", false
+	return "", false, false
 }
 
 func (f *FileURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
@@ -161,6 +161,10 @@ func (f *FileURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID in
 		}
 	}
 	return userURLs, nil
+}
+
+func (f *FileURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
+	return nil
 }
 
 func (f *FileURLs) PingStor(ctx context.Context) error {
