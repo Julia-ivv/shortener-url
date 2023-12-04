@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 )
@@ -20,14 +19,17 @@ type ResponseBatch struct {
 }
 
 type Repositories interface {
-	GetURL(ctx context.Context, shortURL string) (originURL string, ok bool)
-	AddURL(ctx context.Context, originURL string) (shortURL string, err error)
-	AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string) (shortURLBatch []ResponseBatch, err error)
+	GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool)
+	AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error)
+	AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error)
+	GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []UserURL, err error)
+	DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error)
+	PingStor(ctx context.Context) (err error)
+	Close() (err error)
 }
 
 type Stor struct {
-	Repo     Repositories
-	DBHandle *sql.DB
+	Repo Repositories
 }
 
 func NewURLs(flags config.Flags) (Stor, error) {
@@ -36,13 +38,8 @@ func NewURLs(flags config.Flags) (Stor, error) {
 		if err != nil {
 			return Stor{}, err
 		}
-		err = db.CreateAllTables()
-		if err != nil {
-			return Stor{}, err
-		}
 		return Stor{
-			Repo:     db,
-			DBHandle: db.dbHandle,
+			Repo: db,
 		}, nil
 	}
 
@@ -52,13 +49,11 @@ func NewURLs(flags config.Flags) (Stor, error) {
 			return Stor{}, err
 		}
 		return Stor{
-			Repo:     fUrls,
-			DBHandle: nil,
+			Repo: fUrls,
 		}, nil
 	}
 
 	return Stor{
-		Repo:     NewMapURLs(),
-		DBHandle: nil,
+		Repo: NewMapURLs(),
 	}, nil
 }
