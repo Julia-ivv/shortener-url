@@ -219,7 +219,8 @@ func (h *Handlers) getUserURLs(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if len(allURLs) == 0 {
-		http.Error(res, "204 No Content", http.StatusNoContent)
+		// http.Error(res, "204 No Content", http.StatusNoContent)
+		http.Error(res, "No Content", http.StatusUnauthorized)
 		return
 	}
 
