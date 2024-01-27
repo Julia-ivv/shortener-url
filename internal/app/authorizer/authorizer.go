@@ -40,19 +40,16 @@ func BuildToken() (id int, tokenString string, err error) {
 }
 
 func GetUserIDFromToken(tokenString string) (int, error) {
-	// возвращает -1 и ошибку, если не удалось получить id
-	// -1 и nil, если токен невалидный
-	// id и nil, если удалось получить id из токена
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		return []byte(SecretKey), nil
 	})
 	if err != nil {
-		return -1, err
+		return -1, NewTokenError(ParseError, err)
 	}
 
 	if !token.Valid {
-		return -1, nil
+		return -1, NewTokenError(NotValidToken, nil)
 	}
 
 	return claims.UserID, nil

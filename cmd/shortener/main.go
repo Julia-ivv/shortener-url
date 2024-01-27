@@ -25,7 +25,7 @@ func main() {
 		logger.ZapSugar.Fatal(err)
 	}
 
-	defer repo.Repo.Close()
+	defer repo.Close()
 
 	err = http.ListenAndServe(cfg.Host, handlers.NewURLRouter(repo, *cfg))
 	if err != nil {

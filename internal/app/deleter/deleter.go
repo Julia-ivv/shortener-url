@@ -1,4 +1,4 @@
-package channels
+package deleter
 
 import (
 	"database/sql"

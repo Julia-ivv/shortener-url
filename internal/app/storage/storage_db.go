@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/channels"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/deleter"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -173,9 +173,9 @@ func (db *DBURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID i
 	}
 	defer stmt.Close()
 
-	inputCh := channels.Generator(doneCh, delURLs, userID)
-	chans := channels.FanOut(doneCh, inputCh, stmt)
-	resCh := channels.FanIn(stmt, doneCh, chans...)
+	inputCh := deleter.Generator(doneCh, delURLs, userID)
+	chans := deleter.FanOut(doneCh, inputCh, stmt)
+	resCh := deleter.FanIn(stmt, doneCh, chans...)
 	cnt := 0
 	for res := range resCh {
 		if res.Err == nil {

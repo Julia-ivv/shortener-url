@@ -28,32 +28,22 @@ type Repositories interface {
 	Close() (err error)
 }
 
-type Stor struct {
-	Repo Repositories
-}
-
-func NewURLs(flags config.Flags) (Stor, error) {
+func NewURLs(flags config.Flags) (Repositories, error) {
 	if flags.DBDSN != "" {
 		db, err := NewConnectDB(flags.DBDSN)
 		if err != nil {
-			return Stor{}, err
+			return nil, err
 		}
-		return Stor{
-			Repo: db,
-		}, nil
+		return db, nil
 	}
 
 	if flags.FileName != "" {
 		fUrls, err := NewFileURLs(flags.FileName)
 		if err != nil {
-			return Stor{}, err
+			return nil, err
 		}
-		return Stor{
-			Repo: fUrls,
-		}, nil
+		return fUrls, nil
 	}
 
-	return Stor{
-		Repo: NewMapURLs(),
-	}, nil
+	return NewMapURLs(), nil
 }

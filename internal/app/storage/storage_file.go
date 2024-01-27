@@ -13,23 +13,25 @@ type FileURL struct {
 	UserID      int    `json:"user_id"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	DeletedFlag bool   `json:"is_deleted"`
 }
 
 type FileURLs struct {
 	sync.RWMutex
 	fileName string
+	file     *os.File
 	Urls     []FileURL
 }
 
 func NewFileURLs(fileName string) (*FileURLs, error) {
 	urls := make([]FileURL, 0)
-	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE|os.O_APPEND, 0666)
+	fileRd, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer fileRd.Close()
 
-	scan := bufio.NewScanner(file)
+	scan := bufio.NewScanner(fileRd)
 	for scan.Scan() {
 		url := FileURL{}
 		data := scan.Bytes()
@@ -43,8 +45,14 @@ func NewFileURLs(fileName string) (*FileURLs, error) {
 		return nil, err
 	}
 
+	fileWr, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, err
+	}
+
 	return &FileURLs{
 		fileName: fileName,
+		file:     fileWr,
 		Urls:     urls,
 	}, nil
 }
@@ -56,7 +64,7 @@ func (f *FileURLs) GetURL(ctx context.Context, shortURL string) (originURL strin
 
 	for _, v := range f.Urls {
 		if v.ShortURL == shortURL {
-			return v.OriginalURL, false, true
+			return v.OriginalURL, v.DeletedFlag, true
 		}
 	}
 	return "", false, false
@@ -71,18 +79,13 @@ func (f *FileURLs) AddURL(ctx context.Context, originURL string, userID int) (sh
 		UserID:      userID,
 		ShortURL:    short,
 		OriginalURL: originURL,
+		DeletedFlag: false,
 	}
 
 	f.Lock()
 	defer f.Unlock()
 
-	file, err := os.OpenFile(f.fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	wr := bufio.NewWriter(file)
+	wr := bufio.NewWriter(f.file)
 	data, err := json.Marshal(&url)
 	if err != nil {
 		return "", err
@@ -115,6 +118,7 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 			UserID:      userID,
 			ShortURL:    sURL,
 			OriginalURL: v.OriginalURL,
+			DeletedFlag: false,
 		}
 		urls = append(urls, url)
 		data, err := json.Marshal(url)
@@ -128,13 +132,7 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 	f.Lock()
 	defer f.Unlock()
 
-	file, err := os.OpenFile(f.fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	wr := bufio.NewWriter(file)
+	wr := bufio.NewWriter(f.file)
 	if _, err := wr.Write(allData); err != nil {
 		return nil, err
 	}
@@ -164,6 +162,17 @@ func (f *FileURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID in
 }
 
 func (f *FileURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
+	f.Lock()
+	defer f.Unlock()
+
+	for _, delURL := range delURLs {
+		for k, curURL := range f.Urls {
+			if (delURL == curURL.ShortURL) && (userID == curURL.UserID) {
+				f.Urls[k].DeletedFlag = true
+				break
+			}
+		}
+	}
 	return nil
 }
 
@@ -176,5 +185,37 @@ func (f *FileURLs) PingStor(ctx context.Context) error {
 }
 
 func (f *FileURLs) Close() error {
-	return nil
+	f.file.Close()
+
+	var allData []byte
+	for _, v := range f.Urls {
+		url := FileURL{
+			UserID:      v.UserID,
+			ShortURL:    v.ShortURL,
+			OriginalURL: v.OriginalURL,
+			DeletedFlag: v.DeletedFlag,
+		}
+		data, err := json.Marshal(url)
+		if err != nil {
+			return err
+		}
+		allData = append(allData, data...)
+		allData = append(allData, '\n')
+	}
+
+	newFile, err := os.Create(f.fileName)
+	if err != nil {
+		return err
+	}
+
+	wr := bufio.NewWriter(newFile)
+	if _, err := wr.Write(allData); err != nil {
+		return err
+	}
+	err = wr.Flush()
+	if err != nil {
+		return err
+	}
+
+	return newFile.Close()
 }

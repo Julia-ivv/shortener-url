@@ -9,8 +9,8 @@ import (
 	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/middleware"
-
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,12 +18,12 @@ import (
 
 type (
 	Handlers struct {
-		stor storage.Stor
+		stor storage.Repositories
 		cfg  config.Flags
 	}
 )
 
-func NewHandlers(stor storage.Stor, cfg config.Flags) *Handlers {
+func NewHandlers(stor storage.Repositories, cfg config.Flags) *Handlers {
 	h := &Handlers{}
 	h.stor = stor
 	h.cfg = cfg
@@ -50,7 +50,7 @@ func (h *Handlers) postURL(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "request with empty body", http.StatusBadRequest)
 		return
 	}
-	shortURL, err := h.stor.Repo.AddURL(req.Context(), string(postURL), id)
+	shortURL, err := h.stor.AddURL(req.Context(), string(postURL), id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -100,7 +100,7 @@ func (h *Handlers) postJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	json.Unmarshal(reqJSON, &reqURL)
-	shortURL, err := h.stor.Repo.AddURL(req.Context(), string(reqURL.URL), id)
+	shortURL, err := h.stor.AddURL(req.Context(), string(reqURL.URL), id)
 
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -158,7 +158,7 @@ func (h *Handlers) postBatch(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "empty request", http.StatusBadRequest)
 		return
 	}
-	resBatch, err := h.stor.Repo.AddBatch(req.Context(), reqBatch, h.cfg.URL+"/", id)
+	resBatch, err := h.stor.AddBatch(req.Context(), reqBatch, h.cfg.URL+"/", id)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -173,7 +173,7 @@ func (h *Handlers) postBatch(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusCreated)
 	_, err = res.Write(resp)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -183,7 +183,7 @@ func (h *Handlers) getURL(res http.ResponseWriter, req *http.Request) {
 	// возвращает длинный урл в Location
 	// не отбирает по пользователю
 	shortURL := chi.URLParam(req, "shortURL")
-	originURL, isDel, ok := h.stor.Repo.GetURL(req.Context(), shortURL)
+	originURL, isDel, ok := h.stor.GetURL(req.Context(), shortURL)
 	if !ok {
 		http.Error(res, "URL not found", http.StatusBadRequest)
 		return
@@ -198,7 +198,7 @@ func (h *Handlers) getURL(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) getPingDB(res http.ResponseWriter, req *http.Request) {
-	if err := h.stor.Repo.PingStor(req.Context()); err != nil {
+	if err := h.stor.PingStor(req.Context()); err != nil {
 		http.Error(res, "ping error", http.StatusInternalServerError)
 		return
 	}
@@ -213,7 +213,7 @@ func (h *Handlers) getUserURLs(res http.ResponseWriter, req *http.Request) {
 	}
 	id := value.(int)
 
-	allURLs, err := h.stor.Repo.GetAllUserURLs(req.Context(), h.cfg.URL+"/", id)
+	allURLs, err := h.stor.GetAllUserURLs(req.Context(), h.cfg.URL+"/", id)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -233,7 +233,7 @@ func (h *Handlers) getUserURLs(res http.ResponseWriter, req *http.Request) {
 	}
 	_, err = res.Write(resp)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -262,24 +262,26 @@ func (h *Handlers) deleteUserURLs(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	go func() {
-		h.stor.Repo.DeleteUserURLs(req.Context(), reqShortURLs, id)
+		h.stor.DeleteUserURLs(req.Context(), reqShortURLs, id)
 	}()
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusAccepted)
 }
 
-func NewURLRouter(repo storage.Stor, cfg config.Flags) chi.Router {
+func NewURLRouter(repo storage.Repositories, cfg config.Flags) chi.Router {
 	hs := NewHandlers(repo, cfg)
 	r := chi.NewRouter()
-	r.Route("/", func(r chi.Router) {
-		r.Post("/", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.postURL))))
-		r.Get("/{shortURL}", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.getURL))))
-		r.Post("/api/shorten", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.postJSON))))
-		r.Post("/api/shorten/batch", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.postBatch))))
-		r.Get("/api/user/urls", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.getUserURLs))))
-		r.Delete("/api/user/urls", middleware.HandlerWithLogging(middleware.HandlerWithGzipCompression(middleware.HandlerWithAuth(hs.deleteUserURLs))))
-		r.Get("/ping", middleware.HandlerWithLogging(hs.getPingDB))
+	r.Use(middleware.HandlerWithLogging, middleware.HandlerWithGzipCompression)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.HandlerWithAuth)
+		r.Post("/", hs.postURL)
+		r.Get("/{shortURL}", hs.getURL)
+		r.Post("/api/shorten", hs.postJSON)
+		r.Post("/api/shorten/batch", hs.postBatch)
+		r.Get("/api/user/urls", hs.getUserURLs)
+		r.Delete("/api/user/urls", hs.deleteUserURLs)
 	})
+	r.Get("/ping", hs.getPingDB)
 	return r
 }

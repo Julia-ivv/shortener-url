@@ -22,8 +22,6 @@ const testUserID = 123
 var inc int
 var cfg config.Flags
 
-var testRepo storage.Stor
-
 func Init() {
 	cfg = *config.NewConfig()
 }
@@ -65,7 +63,8 @@ func (urls *testURLs) AddURL(ctx context.Context, originURL string, userID int) 
 }
 
 func (urls *testURLs) AddBatch(ctx context.Context, originURLBatch []storage.RequestBatch, baseURL string, userID int) (shortURLBatch []storage.ResponseBatch, err error) {
-	allUrls := make([]testURL, 0)
+	allUrls := make([]testURL, len(originURLBatch))
+	shortURLBatch = make([]storage.ResponseBatch, len(originURLBatch))
 	for _, v := range originURLBatch {
 		sURL := strconv.Itoa(inc)
 		shortURLBatch = append(shortURLBatch, storage.ResponseBatch{
@@ -133,10 +132,29 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 	return resp, string(respBody)
 }
 
-func TestHandlerPost(t *testing.T) {
-	testRepo := storage.Stor{
-		Repo: &testURLs{originalURLs: make([]testURL, 0)},
+func benchRequest(ts *httptest.Server, method, path string, body io.Reader, userID int) error {
+	client := ts.Client()
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
 	}
+
+	req, err := http.NewRequestWithContext(context.WithValue(context.Background(), authorizer.UserContextKey, userID),
+		method, ts.URL+path, body)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func TestHandlerPost(t *testing.T) {
+	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -195,9 +213,7 @@ func TestHandlerGet(t *testing.T) {
 		shortURL:  "EwH",
 		originURL: "https://practicum.yandex.ru/",
 	})
-	testRepo := storage.Stor{
-		Repo: &testURLs{originalURLs: testR},
-	}
+	testRepo := &testURLs{originalURLs: testR}
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -240,9 +256,7 @@ func TestHandlerGet(t *testing.T) {
 }
 
 func TestHandlerPostJSON(t *testing.T) {
-	testRepo := storage.Stor{
-		Repo: &testURLs{originalURLs: make([]testURL, 0)},
-	}
+	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -301,9 +315,7 @@ func TestHandlerGetAllUserURLs(t *testing.T) {
 		shortURL:  "EwH",
 		originURL: "https://practicum.yandex.ru/",
 	})
-	testRepo := storage.Stor{
-		Repo: &testURLs{originalURLs: testR},
-	}
+	testRepo := &testURLs{originalURLs: testR}
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -339,5 +351,187 @@ func TestHandlerGetAllUserURLs(t *testing.T) {
 			assert.Equal(t, test.want.statusCode, resp.StatusCode)
 			assert.True(t, assert.NotEmpty(t, getBody))
 		})
+	}
+}
+
+func TestHandlerPostBatch(t *testing.T) {
+	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
+
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg)
+	router.Post("/api/shorten/batch", AddContext(hs.postBatch))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	type want struct {
+		contentType string
+		statusCode  int
+	}
+	tests := []struct {
+		name   string
+		path   string
+		body   string
+		userID int
+		want   want
+	}{
+		{
+			name: "URLs added successfully",
+			path: "/api/shorten/batch",
+			body: `[
+				{
+					"correlation_id": "ind1",
+					"original_url": "https://pract.ru/url1"
+				},
+				{
+					"correlation_id": "ind2",
+					"original_url": "https://pract.ru/url2"
+				}
+			]`,
+			userID: testUserID,
+			want: want{
+				contentType: "application/json",
+				statusCode:  201,
+			},
+		},
+		{
+			name:   "test with empty body",
+			path:   "/api/shorten/batch",
+			body:   "[]",
+			userID: testUserID,
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  400,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resp, getBody := testRequest(t, ts, "POST", test.path, strings.NewReader(test.body), test.userID)
+			defer resp.Body.Close()
+			assert.Equal(t, test.want.statusCode, resp.StatusCode)
+			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
+			assert.True(t, assert.NotEmpty(t, getBody))
+		})
+	}
+}
+
+func BenchmarkPostURL(b *testing.B) {
+	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
+	path := "/"
+
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg)
+	router.Post(path, AddContext(hs.postURL))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		benchRequest(ts, http.MethodPost, path, strings.NewReader("https://mail.ru/"), testUserID)
+	}
+}
+
+func BenchmarkPostJSON(b *testing.B) {
+	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
+	path := "/api/shorten"
+
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg)
+	router.Post(path, AddContext(hs.postJSON))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		benchRequest(ts, http.MethodPost, path, strings.NewReader(`{"url":"https://mail.ru"}`), testUserID)
+	}
+}
+
+func BenchmarkPostBatch(b *testing.B) {
+	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
+	path := "/api/shorten/batch"
+
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg)
+	router.Post(path, AddContext(hs.postBatch))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		benchRequest(ts, http.MethodPost, path,
+			strings.NewReader(`[
+			{
+				"correlation_id": "ind1",
+				"original_url": "https://pract.ru/url1"
+			},
+			{
+				"correlation_id": "ind2",
+				"original_url": "https://pract.ru/url2"
+			},
+			{
+				"correlation_id": "ind3",
+				"original_url": "https://pract.ru/url3"
+			},
+			{
+				"correlation_id": "ind4",
+				"original_url": "https://pract.ru/url4"
+			}
+		]`), testUserID)
+	}
+}
+
+func BenchmarkGetURL(b *testing.B) {
+	testR := make([]testURL, 0)
+	testR = append(testR, testURL{
+		userID:    testUserID,
+		shortURL:  "EwH",
+		originURL: "https://practicum.yandex.ru/",
+	})
+	testRepo := &testURLs{originalURLs: testR}
+	path := "/"
+
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg)
+	router.Get(path+"{shortURL}", AddContext(hs.getURL))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		benchRequest(ts, http.MethodGet, path+"EwH", nil, testUserID)
+	}
+}
+
+func BenchmarkGetAllUserURLs(b *testing.B) {
+	testR := make([]testURL, 0)
+	testR = append(testR, testURL{
+		userID:    testUserID,
+		shortURL:  "EwH",
+		originURL: "https://practicum.yandex.ru/",
+	})
+	testRepo := &testURLs{originalURLs: testR}
+	path := "/api/user/urls"
+
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg)
+	router.Get(path, AddContext(hs.getUserURLs))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		benchRequest(ts, http.MethodGet, path, nil, testUserID)
 	}
 }
