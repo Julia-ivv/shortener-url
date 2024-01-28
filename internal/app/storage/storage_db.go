@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/deleter"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/Julia-ivv/shortener-url.git/internal/app/deleter"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 )
 
 type DBURLs struct {

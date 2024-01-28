@@ -9,12 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 )
 
 const testUserID = 123
