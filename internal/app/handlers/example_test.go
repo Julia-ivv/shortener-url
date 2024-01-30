@@ -13,8 +13,9 @@ import (
 
 func ExampleHandlers_PostURL() {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
+	type key string
 	const userID = 123
-	const userContextKey = "user"
+	const userContextKey key = "user"
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -43,8 +44,9 @@ func ExampleHandlers_PostURL() {
 func ExampleHandlers_PostJSON() {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 	path := "/api/shorten"
+	type key string
 	const userID = 123
-	const userContextKey = "user"
+	const userContextKey key = "user"
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -73,8 +75,9 @@ func ExampleHandlers_PostJSON() {
 func ExampleHandlers_PostBatch() {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 	path := "/api/shorten/batch"
+	type key string
 	const userID = 123
-	const userContextKey = "user"
+	const userContextKey key = "user"
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -126,8 +129,9 @@ func ExampleHandlers_GetURL() {
 	})
 	testRepo := &testURLs{originalURLs: testR}
 	path := "/"
+	type key string
 	const userID = 123
-	const userContextKey = "user"
+	const userContextKey key = "user"
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -141,14 +145,15 @@ func ExampleHandlers_GetURL() {
 	}
 
 	req, _ := http.NewRequestWithContext(context.WithValue(context.Background(), userContextKey, userID),
-		http.MethodGet, ts.URL+path, nil)
+		http.MethodGet, ts.URL+path+"EwH", nil)
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 	defer resp.Body.Close()
+	location, _ := resp.Location()
 	fmt.Println(resp.StatusCode)
-	fmt.Println(resp.Location())
+	fmt.Println(location)
 
 	// Output:
 	// 307
@@ -164,8 +169,9 @@ func ExampleHandlers_GetUserURLs() {
 	})
 	testRepo := &testURLs{originalURLs: testR}
 	path := "/api/user/urls"
+	type key string
 	const userID = 123
-	const userContextKey = "user"
+	const userContextKey key = "user"
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
@@ -194,5 +200,5 @@ func ExampleHandlers_GetUserURLs() {
 
 	// Output:
 	// 200
-	// [{"short_url": "http://localhost:8080/EwH", "original_url": "https://practicum.yandex.ru/"}]
+	// [{"short_url":"/EwH","original_url":"https://practicum.yandex.ru/"}]
 }
