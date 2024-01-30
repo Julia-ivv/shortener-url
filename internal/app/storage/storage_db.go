@@ -15,10 +15,12 @@ import (
 	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 )
 
+// DBURLs stores a pointer to the database.
 type DBURLs struct {
 	dbHandle *sql.DB
 }
 
+// NewConnectDB creates a connection to the database.
 func NewConnectDB(DBDSN string) (*DBURLs, error) {
 	db, err := sql.Open("pgx", DBDSN)
 	if err != nil {
@@ -37,6 +39,7 @@ func NewConnectDB(DBDSN string) (*DBURLs, error) {
 	return &DBURLs{dbHandle: db}, nil
 }
 
+// GetURL gets the original URL matching the short URL.
 func (db *DBURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
 	// получить длинный урл не учитывая пользователя
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -53,13 +56,14 @@ func (db *DBURLs) GetURL(ctx context.Context, shortURL string) (originURL string
 	return originURL, isDel, true
 }
 
+// UserURL stores pairs: short URL, original URL.
 type UserURL struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
+// GetAllUserURLs gets all user's short url.
 func (db *DBURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []UserURL, err error) {
-	// получить длинный урл
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
@@ -88,6 +92,7 @@ func (db *DBURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int
 	return userURLs, nil
 }
 
+// AddURL adds a new short url.
 func (db *DBURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
 	// добавить урл в БД
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -123,6 +128,7 @@ func (db *DBURLs) AddURL(ctx context.Context, originURL string, userID int) (sho
 	return shortURL, nil
 }
 
+// AddBatch adds a batch of new short URLs.
 func (db *DBURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -163,6 +169,7 @@ func (db *DBURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, b
 	return shortURLBatch, tx.Commit()
 }
 
+// DeleteUserURLs sets the deletion flag to the user URLs sent in the request.
 func (db *DBURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
 	doneCh := make(chan struct{})
 	defer close(doneCh)
@@ -188,10 +195,12 @@ func (db *DBURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID i
 	return nil
 }
 
+// PingStor checking access to storage.
 func (db *DBURLs) PingStor(ctx context.Context) error {
 	return db.dbHandle.PingContext(ctx)
 }
 
+// Close closes the storage.
 func (db *DBURLs) Close() error {
 	return db.dbHandle.Close()
 }

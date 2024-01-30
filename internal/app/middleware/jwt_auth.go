@@ -9,6 +9,7 @@ import (
 	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
 )
 
+// HandlerWithAuth adds user authentication to the handler.
 func HandlerWithAuth(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(res http.ResponseWriter, req *http.Request) {

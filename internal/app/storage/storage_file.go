@@ -9,6 +9,7 @@ import (
 	"sync"
 )
 
+// FileURL stores URL information in file.
 type FileURL struct {
 	UserID      int    `json:"user_id"`
 	ShortURL    string `json:"short_url"`
@@ -16,6 +17,7 @@ type FileURL struct {
 	DeletedFlag bool   `json:"is_deleted"`
 }
 
+// FileURLs stores information about all URLs in file.
 type FileURLs struct {
 	sync.RWMutex
 	fileName string
@@ -23,6 +25,7 @@ type FileURLs struct {
 	Urls     []FileURL
 }
 
+// NewFileURLs creates an instance for storing URLs.
 func NewFileURLs(fileName string) (*FileURLs, error) {
 	urls := make([]FileURL, 0)
 	fileRd, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE|os.O_APPEND, 0666)
@@ -57,8 +60,8 @@ func NewFileURLs(fileName string) (*FileURLs, error) {
 	}, nil
 }
 
+// GetURL gets the original URL matching the short URL.
 func (f *FileURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
-	// получает урл без учета пользователя
 	f.RLock()
 	defer f.RUnlock()
 
@@ -70,6 +73,7 @@ func (f *FileURLs) GetURL(ctx context.Context, shortURL string) (originURL strin
 	return "", false, false
 }
 
+// AddURL adds a new short url.
 func (f *FileURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
 	short, err := GenerateRandomString(LengthShortURL)
 	if err != nil {
@@ -102,6 +106,7 @@ func (f *FileURLs) AddURL(ctx context.Context, originURL string, userID int) (sh
 	return short, wr.Flush()
 }
 
+// AddBatch adds a batch of new short URLs.
 func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error) {
 	var allData []byte
 	urls := make([]FileURL, 0)
@@ -146,6 +151,7 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 	return shortURLBatch, nil
 }
 
+// GetAllUserURLs gets all user's short url.
 func (f *FileURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []UserURL, err error) {
 	f.RLock()
 	defer f.RUnlock()
@@ -161,6 +167,7 @@ func (f *FileURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID in
 	return userURLs, nil
 }
 
+// DeleteUserURLs sets the deletion flag to the user URLs sent in the request.
 func (f *FileURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
 	f.Lock()
 	defer f.Unlock()
@@ -176,6 +183,7 @@ func (f *FileURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID 
 	return nil
 }
 
+// PingStor checking access to storage.
 func (f *FileURLs) PingStor(ctx context.Context) error {
 	_, err := os.Stat(f.fileName)
 	if os.IsNotExist(err) {
@@ -184,6 +192,7 @@ func (f *FileURLs) PingStor(ctx context.Context) error {
 	return nil
 }
 
+// Close closes the storage.
 func (f *FileURLs) Close() error {
 	f.file.Close()
 

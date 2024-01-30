@@ -7,19 +7,27 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// SecretKey - the secret key for the token.
 const SecretKey = "byrhtvtyn"
+
+// AccessToken - the name of the cookie for the token.
 const AccessToken = "accessToken"
+
+// TokenExp - token expiration time.
 const TokenExp = time.Hour * 3
 
 type key string
 
+// UserContextKey - name of the key to get the token value from the context.
 const UserContextKey key = "user"
 
+// Claims for JWT token.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID int
 }
 
+// BuildToken generates a new user ID and a token with this ID.
 func BuildToken() (id int, tokenString string, err error) {
 	id, err = GenerateRandomInt(math.MaxInt32)
 	if err != nil {
@@ -39,6 +47,7 @@ func BuildToken() (id int, tokenString string, err error) {
 	return id, tokenString, nil
 }
 
+// GetUserIDFromToken gets the user ID from the JWT token.
 func GetUserIDFromToken(tokenString string) (int, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {

@@ -6,6 +6,7 @@ import (
 	"sync"
 )
 
+// MemURL stores URL information in memory.
 type MemURL struct {
 	userID      int
 	shortURL    string
@@ -13,19 +14,21 @@ type MemURL struct {
 	deletedFlag bool
 }
 
+// MemURLs stores information about all URLs in memory.
 type MemURLs struct {
 	sync.RWMutex
 	originalURLs []MemURL
 }
 
+// NewMapURLs creates an instance for storing URLs.
 func NewMapURLs() *MemURLs {
 	return &MemURLs{
 		originalURLs: make([]MemURL, 0),
 	}
 }
 
+// GetURL gets the original URL matching the short URL.
 func (urls *MemURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
-	// получить длинный урл без учета пользователя
 	urls.RLock()
 	defer urls.RUnlock()
 
@@ -37,8 +40,8 @@ func (urls *MemURLs) GetURL(ctx context.Context, shortURL string) (originURL str
 	return "", false, false
 }
 
+// AddURL adds a new short url.
 func (urls *MemURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
-	// добавить новый урл
 	short, err := GenerateRandomString(LengthShortURL)
 	if err != nil {
 		return "", err
@@ -56,6 +59,7 @@ func (urls *MemURLs) AddURL(ctx context.Context, originURL string, userID int) (
 	return short, nil
 }
 
+// AddBatch adds a batch of new short URLs.
 func (urls *MemURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error) {
 	allUrls := make([]MemURL, len(originURLBatch))
 	shortURLBatch = make([]ResponseBatch, len(originURLBatch))
@@ -83,6 +87,7 @@ func (urls *MemURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch
 	return shortURLBatch, nil
 }
 
+// GetAllUserURLs gets all user's short url.
 func (urls *MemURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []UserURL, err error) {
 	urls.RLock()
 	defer urls.RUnlock()
@@ -99,6 +104,7 @@ func (urls *MemURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID 
 	return userURLs, nil
 }
 
+// DeleteUserURLs sets the deletion flag to the user URLs sent in the request.
 func (urls *MemURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
 	urls.Lock()
 	defer urls.Unlock()
@@ -114,6 +120,7 @@ func (urls *MemURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userI
 	return nil
 }
 
+// PingStor checking access to storage.
 func (urls *MemURLs) PingStor(ctx context.Context) error {
 	if urls == nil {
 		return errors.New("storage storage does not exist")
@@ -121,6 +128,7 @@ func (urls *MemURLs) PingStor(ctx context.Context) error {
 	return nil
 }
 
+// Close closes the storage.
 func (urls *MemURLs) Close() error {
 	urls = nil
 	return nil

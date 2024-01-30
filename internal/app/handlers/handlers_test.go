@@ -42,7 +42,6 @@ func (urls *testURLs) DeleteUserURLs(ctx context.Context, delURLs []string, user
 }
 
 func (urls *testURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
-	// получить длинный урл
 	for _, v := range urls.originalURLs {
 		if v.shortURL == shortURL {
 			return v.originURL, false, true
@@ -154,12 +153,12 @@ func benchRequest(ts *httptest.Server, method, path string, body io.Reader, user
 	return nil
 }
 
-func TestHandlerPost(t *testing.T) {
+func TestHandlerPostURL(t *testing.T) {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post("/", AddContext(hs.postURL))
+	router.Post("/", AddContext(hs.PostURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -207,7 +206,7 @@ func TestHandlerPost(t *testing.T) {
 	}
 }
 
-func TestHandlerGet(t *testing.T) {
+func TestHandlerGetURL(t *testing.T) {
 	testR := make([]testURL, 0)
 	testR = append(testR, testURL{
 		userID:    testUserID,
@@ -218,7 +217,7 @@ func TestHandlerGet(t *testing.T) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Get("/{shortURL}", AddContext(hs.getURL))
+	router.Get("/{shortURL}", AddContext(hs.GetURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -261,7 +260,7 @@ func TestHandlerPostJSON(t *testing.T) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post("/api/shorten", AddContext(hs.postJSON))
+	router.Post("/api/shorten", AddContext(hs.PostJSON))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -309,7 +308,7 @@ func TestHandlerPostJSON(t *testing.T) {
 	}
 }
 
-func TestHandlerGetAllUserURLs(t *testing.T) {
+func TestHandlerGetUserURLs(t *testing.T) {
 	testR := make([]testURL, 0)
 	testR = append(testR, testURL{
 		userID:    testUserID,
@@ -320,7 +319,7 @@ func TestHandlerGetAllUserURLs(t *testing.T) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Get("/api/user/urls", AddContext(hs.getUserURLs))
+	router.Get("/api/user/urls", AddContext(hs.GetUserURLs))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -360,7 +359,7 @@ func TestHandlerPostBatch(t *testing.T) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post("/api/shorten/batch", AddContext(hs.postBatch))
+	router.Post("/api/shorten/batch", AddContext(hs.PostBatch))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -423,7 +422,7 @@ func BenchmarkPostURL(b *testing.B) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post(path, AddContext(hs.postURL))
+	router.Post(path, AddContext(hs.PostURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -441,7 +440,7 @@ func BenchmarkPostJSON(b *testing.B) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post(path, AddContext(hs.postJSON))
+	router.Post(path, AddContext(hs.PostJSON))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -459,7 +458,7 @@ func BenchmarkPostBatch(b *testing.B) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post(path, AddContext(hs.postBatch))
+	router.Post(path, AddContext(hs.PostBatch))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -501,7 +500,7 @@ func BenchmarkGetURL(b *testing.B) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Get(path+"{shortURL}", AddContext(hs.getURL))
+	router.Get(path+"{shortURL}", AddContext(hs.GetURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -513,7 +512,7 @@ func BenchmarkGetURL(b *testing.B) {
 	}
 }
 
-func BenchmarkGetAllUserURLs(b *testing.B) {
+func BenchmarkGetUserURLs(b *testing.B) {
 	testR := make([]testURL, 0)
 	testR = append(testR, testURL{
 		userID:    testUserID,
@@ -525,7 +524,7 @@ func BenchmarkGetAllUserURLs(b *testing.B) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Get(path, AddContext(hs.getUserURLs))
+	router.Get(path, AddContext(hs.GetUserURLs))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 

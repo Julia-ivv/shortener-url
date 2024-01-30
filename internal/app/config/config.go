@@ -1,3 +1,4 @@
+// Package config receives settings when the application starts.
 package config
 
 import (
@@ -6,13 +7,19 @@ import (
 	"github.com/caarlos0/env"
 )
 
+// Flags stores application launch settings.
 type Flags struct {
-	Host     string `env:"SERVER_ADDRESS"`    // -a адрес запуска HTTP-сервера, например localhost:8080
-	URL      string `env:"BASE_URL"`          // -b базовый адрес результирующего сокращённого URL, например  http://localhost:8080
-	FileName string `env:"FILE_STORAGE_PATH"` // -f полное имя файла, куда сохраняются данные в формате JSON
-	DBDSN    string `env:"DATABASE_DSN"`      // -d строка с адресом подключения к БД
+	// Host (flag -a) - HTTP server launch address,  e.g. localhost:8080.
+	Host string `env:"SERVER_ADDRESS"`
+	// URL (flag -b) - the base address of the resulting shortened URL, e.g.  http://localhost:8080.
+	URL string `env:"BASE_URL"`
+	// FileName (flag -f) - full name of the JSON file to save data.
+	FileName string `env:"FILE_STORAGE_PATH"`
+	// DBDSN (flag -d) - database connection address.
+	DBDSN string `env:"DATABASE_DSN"`
 }
 
+// NewConfig creates an instance with settings from flags or environment variables.
 func NewConfig() *Flags {
 	c := &Flags{}
 
