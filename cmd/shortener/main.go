@@ -1,3 +1,4 @@
+// Package main application entry point.
 package main
 
 import (
@@ -5,8 +6,8 @@ import (
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/handlers"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
 )
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 		logger.ZapSugar.Fatal(err)
 	}
 
-	defer repo.Repo.Close()
+	defer repo.Close()
 
 	err = http.ListenAndServe(cfg.Host, handlers.NewURLRouter(repo, *cfg))
 	if err != nil {

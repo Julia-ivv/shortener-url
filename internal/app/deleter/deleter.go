@@ -1,19 +1,23 @@
-package channels
+// Package deleter uses channels to async delete a list of user's URLs.
+package deleter
 
 import (
 	"database/sql"
 	"sync"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
+	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
 )
 
+// NumWorkers - number of channels receiving data for deletion.
 const NumWorkers = 5
 
+// DelData contains the URL for deletion and its user ID.
 type DelData struct {
 	ShortURL string
 	UserID   int
 }
 
+// Generator sends URLs to the channel for deletion.
 func Generator(doneCh chan struct{}, input []string, userID int) chan DelData {
 	inputCh := make(chan DelData)
 
@@ -32,11 +36,15 @@ func Generator(doneCh chan struct{}, input []string, userID int) chan DelData {
 	return inputCh
 }
 
+// DelResult contains the result of removing the URL.
 type DelResult struct {
 	Rows int64
 	Err  error
 }
 
+// del receives the URL for deletion from the channel inputCh,
+// marks the URL as deleted in the storage,
+// places the result of the work in the channel delRes.
 func del(doneCh chan struct{}, inputCh chan DelData, stmt *sql.Stmt) chan DelResult {
 	delRes := make(chan DelResult)
 
@@ -59,6 +67,7 @@ func del(doneCh chan struct{}, inputCh chan DelData, stmt *sql.Stmt) chan DelRes
 	return delRes
 }
 
+// FanOut fills the channel with the deletion results.
 func FanOut(doneCh chan struct{}, inputCh chan DelData, stmt *sql.Stmt) []chan DelResult {
 	channels := make([]chan DelResult, NumWorkers)
 	for i := 0; i < NumWorkers; i++ {
@@ -68,6 +77,7 @@ func FanOut(doneCh chan struct{}, inputCh chan DelData, stmt *sql.Stmt) []chan D
 	return channels
 }
 
+// FanIn collects URL removal results from several channels into one.
 func FanIn(stmt *sql.Stmt, doneCh chan struct{}, chans ...chan DelResult) chan DelResult {
 	finalCh := make(chan DelResult)
 	var wGroup sync.WaitGroup

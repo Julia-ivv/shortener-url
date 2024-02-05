@@ -1,3 +1,4 @@
+// Package compressing implements gzip for middleware compression.
 package compressing
 
 import (
@@ -11,10 +12,12 @@ type gzipWriter struct {
 	Writer *gzip.Writer
 }
 
+// Write overrides the Write method to send a compressed response.
 func (w *gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
+// NewGzipWriter creates a new instance for the gzip packager.
 func NewGzipWriter(w http.ResponseWriter) *gzipWriter {
 	return &gzipWriter{
 		ResponseWriter: w,
@@ -27,6 +30,7 @@ type gzipReader struct {
 	zipReader  *gzip.Reader
 }
 
+// NewGzipReader creates a new instance for unpacking data.
 func NewGzipReader(r io.ReadCloser) (*gzipReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
@@ -38,10 +42,12 @@ func NewGzipReader(r io.ReadCloser) (*gzipReader, error) {
 	}, nil
 }
 
+// Read overrides the Read method to unpack data.
 func (r *gzipReader) Read(b []byte) (n int, err error) {
 	return r.zipReader.Read(b)
 }
 
+// Close gzip.
 func (r *gzipReader) Close() error {
 	if err := r.readCloser.Close(); err != nil {
 		return err

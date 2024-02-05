@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/compressing"
+	"github.com/Julia-ivv/shortener-url.git/pkg/compressing"
 )
 
-func HandlerWithGzipCompression(h http.HandlerFunc) http.HandlerFunc {
+// HandlerWithGzipCompression adds the use of the gzip compression to the handler.
+func HandlerWithGzipCompression(h http.Handler) http.Handler {
 	contentTypeForCompression := [2]string{"application/json", "text/html"}
 	return http.HandlerFunc(
 		func(res http.ResponseWriter, req *http.Request) {

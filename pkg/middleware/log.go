@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
+	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
 )
 
 type (
@@ -19,18 +19,21 @@ type (
 	}
 )
 
+// Write overrides the Write method to add the response size to the logs.
 func (res *logResponseWriter) Write(b []byte) (int, error) {
 	size, err := res.ResponseWriter.Write(b)
 	res.responseInfo.size += size
 	return size, err
 }
 
+// WriteHeader overrides the Write method to add a status code to the logs.
 func (res *logResponseWriter) WriteHeader(statusCode int) {
 	res.ResponseWriter.WriteHeader(statusCode)
 	res.responseInfo.status = statusCode
 }
 
-func HandlerWithLogging(h http.HandlerFunc) http.HandlerFunc {
+// HandlerWithLogging adds logging to the handler.
+func HandlerWithLogging(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(res http.ResponseWriter, req *http.Request) {
 			start := time.Now()
@@ -45,7 +48,7 @@ func HandlerWithLogging(h http.HandlerFunc) http.HandlerFunc {
 			uri := req.RequestURI
 			method := req.Method
 
-			h(&logResponseWriter, req)
+			h.ServeHTTP(&logResponseWriter, req)
 			duration := time.Since(start)
 
 			logger.ZapSugar.Infoln(
