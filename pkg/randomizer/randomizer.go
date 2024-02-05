@@ -1,8 +1,10 @@
-package storage
+// Package randomizer contains functions for random generation.
+package randomizer
 
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"math/big"
 )
 
 // LengthShortURL limits the length of a short URL.
@@ -23,4 +25,13 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 func GenerateRandomString(length int) (string, error) {
 	b, err := GenerateRandomBytes(length)
 	return base64.RawURLEncoding.EncodeToString(b), err
+}
+
+// GenerateRandomInt generates a random user ID.
+func GenerateRandomInt(max int) (int, error) {
+	rand, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		return 0, err
+	}
+	return int(rand.Int64()), nil
 }

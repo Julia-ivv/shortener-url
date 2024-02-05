@@ -12,7 +12,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/deleter"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
+	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
+	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // DBURLs stores a pointer to the database.
@@ -98,7 +99,7 @@ func (db *DBURLs) AddURL(ctx context.Context, originURL string, userID int) (sho
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
-	shortURL, err = GenerateRandomString(LengthShortURL)
+	shortURL, err = randomizer.GenerateRandomString(randomizer.LengthShortURL)
 	if err != nil {
 		return "", err
 	}
@@ -139,7 +140,7 @@ func (db *DBURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, b
 	}
 
 	for _, v := range originURLBatch {
-		shortURL, err := GenerateRandomString(LengthShortURL)
+		shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
 		if err != nil {
 			tx.Rollback()
 			return nil, err

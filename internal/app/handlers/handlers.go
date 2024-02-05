@@ -6,14 +6,15 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/middleware"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
+	mwInt "github.com/Julia-ivv/shortener-url.git/internal/app/middleware"
+	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+	mwPkg "github.com/Julia-ivv/shortener-url.git/pkg/middleware"
 )
 
 // Handlers stores the repository and settings of this application.
@@ -277,9 +278,9 @@ func (h *Handlers) DeleteUserURLs(res http.ResponseWriter, req *http.Request) {
 func NewURLRouter(repo storage.Repositories, cfg config.Flags) chi.Router {
 	hs := NewHandlers(repo, cfg)
 	r := chi.NewRouter()
-	r.Use(middleware.HandlerWithLogging, middleware.HandlerWithGzipCompression)
+	r.Use(mwPkg.HandlerWithLogging, mwPkg.HandlerWithGzipCompression)
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.HandlerWithAuth)
+		r.Use(mwInt.HandlerWithAuth)
 		r.Post("/", hs.PostURL)
 		r.Get("/{shortURL}", hs.GetURL)
 		r.Post("/api/shorten", hs.PostJSON)

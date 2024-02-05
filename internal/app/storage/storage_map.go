@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // MemURL stores URL information in memory.
@@ -42,7 +44,7 @@ func (urls *MemURLs) GetURL(ctx context.Context, shortURL string) (originURL str
 
 // AddURL adds a new short url.
 func (urls *MemURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
-	short, err := GenerateRandomString(LengthShortURL)
+	short, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
 	if err != nil {
 		return "", err
 	}
@@ -64,7 +66,7 @@ func (urls *MemURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch
 	allUrls := make([]MemURL, len(originURLBatch))
 	shortURLBatch = make([]ResponseBatch, len(originURLBatch))
 	for _, v := range originURLBatch {
-		sURL, err := GenerateRandomString(LengthShortURL)
+		sURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
 		if err != nil {
 			return nil, err
 		}

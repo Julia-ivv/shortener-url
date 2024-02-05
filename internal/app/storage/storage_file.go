@@ -7,6 +7,8 @@ import (
 	"errors"
 	"os"
 	"sync"
+
+	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // FileURL stores URL information in file.
@@ -75,7 +77,7 @@ func (f *FileURLs) GetURL(ctx context.Context, shortURL string) (originURL strin
 
 // AddURL adds a new short url.
 func (f *FileURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
-	short, err := GenerateRandomString(LengthShortURL)
+	short, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
 	if err != nil {
 		return "", err
 	}
@@ -111,7 +113,7 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 	var allData []byte
 	urls := make([]FileURL, 0)
 	for _, v := range originURLBatch {
-		sURL, err := GenerateRandomString(LengthShortURL)
+		sURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
 		if err != nil {
 			return nil, err
 		}

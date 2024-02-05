@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/compressing"
+	"github.com/Julia-ivv/shortener-url.git/pkg/compressing"
 )
 
 // HandlerWithGzipCompression adds the use of the gzip compression to the handler.

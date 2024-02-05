@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+
+	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // SecretKey - the secret key for the token.
@@ -29,7 +31,7 @@ type Claims struct {
 
 // BuildToken generates a new user ID and a token with this ID.
 func BuildToken() (id int, tokenString string, err error) {
-	id, err = GenerateRandomInt(math.MaxInt32)
+	id, err = randomizer.GenerateRandomInt(math.MaxInt32)
 	if err != nil {
 		return -1, "", err
 	}

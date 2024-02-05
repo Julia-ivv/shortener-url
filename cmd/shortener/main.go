@@ -6,8 +6,8 @@ import (
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/handlers"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/logger"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
 )
 
 func main() {
