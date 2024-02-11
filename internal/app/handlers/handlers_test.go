@@ -28,9 +28,9 @@ func Init() {
 }
 
 type testURL struct {
-	userID    int
 	shortURL  string
 	originURL string
+	userID    int
 }
 
 type testURLs struct {
@@ -170,8 +170,8 @@ func TestHandlerPostURL(t *testing.T) {
 		name        string
 		path        string
 		originalURL string // URL в теле запроса
-		userID      int
 		want        want
+		userID      int
 	}{
 		{
 			name:        "URL added successfully",
@@ -222,14 +222,14 @@ func TestHandlerGetURL(t *testing.T) {
 	defer ts.Close()
 
 	type want struct {
-		statusCode int
 		originURL  string
+		statusCode int
 	}
 	tests := []struct {
 		name   string
 		path   string
-		userID int
 		want   want
+		userID int
 	}{
 		{
 			name:   "url exists in repository",
@@ -272,8 +272,8 @@ func TestHandlerPostJSON(t *testing.T) {
 		name   string
 		path   string
 		body   string
-		userID int
 		want   want
+		userID int
 	}{
 		{
 			name:   "URL added successfully",
@@ -324,14 +324,14 @@ func TestHandlerGetUserURLs(t *testing.T) {
 	defer ts.Close()
 
 	type want struct {
-		statusCode int
 		userURLs   string
+		statusCode int
 	}
 	tests := []struct {
 		name   string
 		path   string
-		userID int
 		want   want
+		userID int
 	}{
 		{
 			name:   "url exists in repository",
@@ -371,8 +371,8 @@ func TestHandlerPostBatch(t *testing.T) {
 		name   string
 		path   string
 		body   string
-		userID int
 		want   want
+		userID int
 	}{
 		{
 			name: "URLs added successfully",

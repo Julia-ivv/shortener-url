@@ -13,18 +13,18 @@ import (
 
 // FileURL stores URL information in file.
 type FileURL struct {
-	UserID      int    `json:"user_id"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 	DeletedFlag bool   `json:"is_deleted"`
+	UserID      int    `json:"user_id"`
 }
 
 // FileURLs stores information about all URLs in file.
 type FileURLs struct {
-	sync.RWMutex
 	fileName string
 	file     *os.File
 	Urls     []FileURL
+	sync.RWMutex
 }
 
 // NewFileURLs creates an instance for storing URLs.
@@ -40,13 +40,13 @@ func NewFileURLs(fileName string) (*FileURLs, error) {
 	for scan.Scan() {
 		url := FileURL{}
 		data := scan.Bytes()
-		err := json.Unmarshal(data, &url)
+		err = json.Unmarshal(data, &url)
 		if err != nil {
 			return nil, err
 		}
 		urls = append(urls, url)
 	}
-	if err := scan.Err(); err != nil {
+	if err = scan.Err(); err != nil {
 		return nil, err
 	}
 
@@ -113,7 +113,8 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 	var allData []byte
 	urls := make([]FileURL, 0)
 	for _, v := range originURLBatch {
-		sURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
+		var sURL string
+		sURL, err = randomizer.GenerateRandomString(randomizer.LengthShortURL)
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +129,8 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 			DeletedFlag: false,
 		}
 		urls = append(urls, url)
-		data, err := json.Marshal(url)
+		var data []byte
+		data, err = json.Marshal(url)
 		if err != nil {
 			return nil, err
 		}
@@ -140,7 +142,7 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 	defer f.Unlock()
 
 	wr := bufio.NewWriter(f.file)
-	if _, err := wr.Write(allData); err != nil {
+	if _, err = wr.Write(allData); err != nil {
 		return nil, err
 	}
 	err = wr.Flush()
@@ -220,7 +222,7 @@ func (f *FileURLs) Close() error {
 	}
 
 	wr := bufio.NewWriter(newFile)
-	if _, err := wr.Write(allData); err != nil {
+	if _, err = wr.Write(allData); err != nil {
 		return err
 	}
 	err = wr.Flush()

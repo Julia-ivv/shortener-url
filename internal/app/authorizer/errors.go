@@ -13,8 +13,8 @@ const (
 
 // TokenErr stores the error and its type.
 type TokenErr struct {
-	ErrType TypeTokenErrors
 	Err     error
+	ErrType TypeTokenErrors
 }
 
 // Error returns error type.

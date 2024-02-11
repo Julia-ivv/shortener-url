@@ -10,16 +10,16 @@ import (
 
 // MemURL stores URL information in memory.
 type MemURL struct {
-	userID      int
 	shortURL    string
 	originURL   string
 	deletedFlag bool
+	userID      int
 }
 
 // MemURLs stores information about all URLs in memory.
 type MemURLs struct {
-	sync.RWMutex
 	originalURLs []MemURL
+	sync.RWMutex
 }
 
 // NewMapURLs creates an instance for storing URLs.

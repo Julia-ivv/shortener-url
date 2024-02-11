@@ -38,8 +38,8 @@ func Generator(doneCh chan struct{}, input []string, userID int) chan DelData {
 
 // DelResult contains the result of removing the URL.
 type DelResult struct {
-	Rows int64
 	Err  error
+	Rows int64
 }
 
 // del receives the URL for deletion from the channel inputCh,

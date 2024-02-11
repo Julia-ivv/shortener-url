@@ -6,7 +6,7 @@ import (
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 )
 
-var inc int
+// var inc int
 
 // RequestBatch stores data from the request body for adding a batch of URLs.
 type RequestBatch struct {
