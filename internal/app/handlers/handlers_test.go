@@ -177,6 +177,7 @@ func TestHandlerPostURL(t *testing.T) {
 		w := httptest.NewRecorder()
 		hs.PostURL(w, httptest.NewRequest("GET", ts.URL+"/", nil))
 		res := w.Result()
+		defer res.Body.Close()
 		assert.Equal(t, 500, res.StatusCode)
 	})
 
@@ -314,6 +315,7 @@ func TestHandlerDeleteUserURLs(t *testing.T) {
 		w := httptest.NewRecorder()
 		hs.DeleteUserURLs(w, httptest.NewRequest("DELETE", path, nil))
 		res := w.Result()
+		defer res.Body.Close()
 		assert.Equal(t, 500, res.StatusCode)
 	})
 
@@ -365,6 +367,7 @@ func TestHandlerPostJSON(t *testing.T) {
 		w := httptest.NewRecorder()
 		hs.PostJSON(w, httptest.NewRequest("POST", ts.URL+"/api/shorten", nil))
 		res := w.Result()
+		defer res.Body.Close()
 		assert.Equal(t, 500, res.StatusCode)
 	})
 
@@ -425,6 +428,7 @@ func TestHandlerGetUserURLs(t *testing.T) {
 		w := httptest.NewRecorder()
 		hs.GetUserURLs(w, httptest.NewRequest("GET", ts.URL+"/api/user/urls", nil))
 		res := w.Result()
+		defer res.Body.Close()
 		assert.Equal(t, 500, res.StatusCode)
 	})
 	router.Get("/api/user/urls", AddContext(hs.GetUserURLs))
@@ -490,6 +494,7 @@ func TestHandlerPostBatch(t *testing.T) {
 		w := httptest.NewRecorder()
 		hs.PostBatch(w, httptest.NewRequest("POST", ts.URL+"/api/shorten/batch", nil))
 		res := w.Result()
+		defer res.Body.Close()
 		assert.Equal(t, 500, res.StatusCode)
 	})
 
@@ -587,6 +592,7 @@ func TestPing(t *testing.T) {
 		w := httptest.NewRecorder()
 		hs.GetPingDB(w, httptest.NewRequest("GET", ts.URL+"/ping", nil))
 		res := w.Result()
+		defer res.Body.Close()
 		assert.Equal(t, 200, res.StatusCode)
 	})
 
@@ -598,6 +604,7 @@ func TestPing(t *testing.T) {
 		w := httptest.NewRecorder()
 		hs.GetPingDB(w, httptest.NewRequest("GET", ts.URL+"/ping", nil))
 		res := w.Result()
+		defer res.Body.Close()
 		assert.Equal(t, 500, res.StatusCode)
 	})
 }
