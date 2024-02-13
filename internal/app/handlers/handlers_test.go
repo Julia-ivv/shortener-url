@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -28,9 +29,10 @@ func Init() {
 }
 
 type testURL struct {
-	shortURL  string
-	originURL string
-	userID    int
+	shortURL    string
+	originURL   string
+	deletedFlag bool
+	userID      int
 }
 
 type testURLs struct {
@@ -38,20 +40,27 @@ type testURLs struct {
 }
 
 func (urls *testURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID int) (err error) {
+	for _, delURL := range delURLs {
+		for k, curURL := range urls.originalURLs {
+			if (delURL == curURL.shortURL) && (userID == curURL.userID) {
+				urls.originalURLs[k].deletedFlag = true
+				break
+			}
+		}
+	}
 	return nil
 }
 
 func (urls *testURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
 	for _, v := range urls.originalURLs {
 		if v.shortURL == shortURL {
-			return v.originURL, false, true
+			return v.originURL, v.deletedFlag, true
 		}
 	}
 	return "", false, false
 }
 
 func (urls *testURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
-	// добавить новый урл
 	inc++
 	short := strconv.Itoa(inc)
 	urls.originalURLs = append(urls.originalURLs, testURL{
@@ -97,6 +106,9 @@ func (urls *testURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID
 }
 
 func (urls *testURLs) PingStor(ctx context.Context) (err error) {
+	if urls == nil {
+		return errors.New("storage storage does not exist")
+	}
 	return nil
 }
 
@@ -158,10 +170,17 @@ func TestHandlerPostURL(t *testing.T) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post("/", AddContext(hs.PostURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
+	t.Run("without context", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		hs.PostURL(w, httptest.NewRequest("GET", ts.URL+"/", nil))
+		res := w.Result()
+		assert.Equal(t, 500, res.StatusCode)
+	})
+
+	router.Post("/", AddContext(hs.PostURL))
 	type want struct {
 		contentType string
 		statusCode  int
@@ -169,7 +188,7 @@ func TestHandlerPostURL(t *testing.T) {
 	tests := []struct {
 		name        string
 		path        string
-		originalURL string // URL в теле запроса
+		originalURL string
 		want        want
 		userID      int
 	}{
@@ -209,18 +228,25 @@ func TestHandlerPostURL(t *testing.T) {
 func TestHandlerGetURL(t *testing.T) {
 	testR := make([]testURL, 0)
 	testR = append(testR, testURL{
-		userID:    testUserID,
-		shortURL:  "EwH",
-		originURL: "https://practicum.yandex.ru/",
+		userID:      testUserID,
+		shortURL:    "EwH",
+		deletedFlag: false,
+		originURL:   "https://practicum.yandex.ru/",
+	})
+	testR = append(testR, testURL{
+		userID:      testUserID,
+		shortURL:    "Eorp",
+		deletedFlag: true,
+		originURL:   "https://yandex.ru/",
 	})
 	testRepo := &testURLs{originalURLs: testR}
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Get("/{shortURL}", AddContext(hs.GetURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
+	router.Get("/{shortURL}", AddContext(hs.GetURL))
 	type want struct {
 		originURL  string
 		statusCode int
@@ -243,6 +269,12 @@ func TestHandlerGetURL(t *testing.T) {
 			userID: testUserID,
 			want:   want{statusCode: 400, originURL: ""},
 		},
+		{
+			name:   "url deleted",
+			path:   "/Eorp",
+			userID: testUserID,
+			want:   want{statusCode: 410, originURL: ""},
+		},
 	}
 
 	for _, test := range tests {
@@ -255,15 +287,88 @@ func TestHandlerGetURL(t *testing.T) {
 	}
 }
 
+func TestHandlerDeleteUserURLs(t *testing.T) {
+	path := "/api/user/urls"
+	testR := make([]testURL, 0)
+	testR = append(testR, testURL{
+		userID:      testUserID,
+		shortURL:    "EwH",
+		originURL:   "https://practicum.yandex.ru/",
+		deletedFlag: false,
+	})
+	testR = append(testR, testURL{
+		userID:      testUserID,
+		shortURL:    "Ert",
+		originURL:   "https://mail.ru/",
+		deletedFlag: false,
+	})
+
+	testRepo := &testURLs{originalURLs: testR}
+
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	t.Run("without context", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		hs.DeleteUserURLs(w, httptest.NewRequest("DELETE", path, nil))
+		res := w.Result()
+		assert.Equal(t, 500, res.StatusCode)
+	})
+
+	router.Delete("/api/user/urls", AddContext(hs.DeleteUserURLs))
+	tests := []struct {
+		name       string
+		body       string
+		userID     int
+		wantStatus int
+	}{
+		{
+			name:       "with body",
+			body:       `["EwH"]`,
+			userID:     testUserID,
+			wantStatus: 202,
+		},
+		{
+			name:       "empty body",
+			body:       "",
+			userID:     testUserID,
+			wantStatus: 400,
+		},
+		{
+			name:       "bad body",
+			body:       "ghgh",
+			userID:     testUserID,
+			wantStatus: 500,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resp, _ := testRequest(t, ts, "DELETE", path, strings.NewReader(test.body), test.userID)
+			defer resp.Body.Close()
+			assert.Equal(t, test.wantStatus, resp.StatusCode)
+		})
+	}
+}
+
 func TestHandlerPostJSON(t *testing.T) {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post("/api/shorten", AddContext(hs.PostJSON))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
+	t.Run("without context", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		hs.PostJSON(w, httptest.NewRequest("POST", ts.URL+"/api/shorten", nil))
+		res := w.Result()
+		assert.Equal(t, 500, res.StatusCode)
+	})
+
+	router.Post("/api/shorten", AddContext(hs.PostJSON))
 	type want struct {
 		contentType string
 		statusCode  int
@@ -309,49 +414,68 @@ func TestHandlerPostJSON(t *testing.T) {
 }
 
 func TestHandlerGetUserURLs(t *testing.T) {
-	testR := make([]testURL, 0)
-	testR = append(testR, testURL{
-		userID:    testUserID,
-		shortURL:  "EwH",
-		originURL: "https://practicum.yandex.ru/",
-	})
-	testRepo := &testURLs{originalURLs: testR}
+	testRepo := &testURLs{originalURLs: nil}
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Get("/api/user/urls", AddContext(hs.GetUserURLs))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
+
+	t.Run("without context", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		hs.GetUserURLs(w, httptest.NewRequest("GET", ts.URL+"/api/user/urls", nil))
+		res := w.Result()
+		assert.Equal(t, 500, res.StatusCode)
+	})
+	router.Get("/api/user/urls", AddContext(hs.GetUserURLs))
 
 	type want struct {
 		userURLs   string
 		statusCode int
 	}
-	tests := []struct {
+	type tests struct {
 		name   string
 		path   string
 		want   want
 		userID int
-	}{
-		{
-			name:   "url exists in repository",
-			path:   "/api/user/urls",
-			userID: testUserID,
-			want: want{statusCode: 200, userURLs: `[{
+	}
+	test := tests{
+		name:   "no content",
+		path:   "/api/user/urls",
+		userID: 888,
+		want:   want{statusCode: 401, userURLs: ""},
+	}
+
+	t.Run(test.name, func(t *testing.T) {
+		resp, _ := testRequest(t, ts, "GET", test.path, nil, test.userID)
+		defer resp.Body.Close()
+		assert.Equal(t, test.want.statusCode, resp.StatusCode)
+	})
+
+	testR := make([]testURL, 0)
+	testR = append(testR, testURL{
+		userID:      testUserID,
+		shortURL:    "EwH",
+		deletedFlag: false,
+		originURL:   "https://practicum.yandex.ru/",
+	})
+	testRepo.originalURLs = testR
+	test = tests{
+		name:   "url exists in repository",
+		path:   "/api/user/urls",
+		userID: testUserID,
+		want: want{statusCode: 200, userURLs: `[{
 				"short_url": "http://localhost:8080/EwH",
 				"original_url": "https://practicum.yandex.ru/"
 			}]`},
-		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			resp, getBody := testRequest(t, ts, "GET", test.path, nil, test.userID)
-			defer resp.Body.Close()
-			assert.Equal(t, test.want.statusCode, resp.StatusCode)
-			assert.True(t, assert.NotEmpty(t, getBody))
-		})
-	}
+	t.Run(test.name, func(t *testing.T) {
+		resp, getBody := testRequest(t, ts, "GET", test.path, nil, test.userID)
+		defer resp.Body.Close()
+		assert.Equal(t, test.want.statusCode, resp.StatusCode)
+		assert.True(t, assert.NotEmpty(t, getBody))
+	})
 }
 
 func TestHandlerPostBatch(t *testing.T) {
@@ -359,10 +483,17 @@ func TestHandlerPostBatch(t *testing.T) {
 
 	router := chi.NewRouter()
 	hs := NewHandlers(testRepo, cfg)
-	router.Post("/api/shorten/batch", AddContext(hs.PostBatch))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
+	t.Run("without context", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		hs.PostBatch(w, httptest.NewRequest("POST", ts.URL+"/api/shorten/batch", nil))
+		res := w.Result()
+		assert.Equal(t, 500, res.StatusCode)
+	})
+
+	router.Post("/api/shorten/batch", AddContext(hs.PostBatch))
 	type want struct {
 		contentType string
 		statusCode  int
@@ -394,13 +525,42 @@ func TestHandlerPostBatch(t *testing.T) {
 			},
 		},
 		{
-			name:   "test with empty body",
+			name:   "test with empty batch",
 			path:   "/api/shorten/batch",
 			body:   "[]",
 			userID: testUserID,
 			want: want{
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  400,
+			},
+		},
+		{
+			name:   "test with empty body",
+			path:   "/api/shorten/batch",
+			body:   "",
+			userID: testUserID,
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  400,
+			},
+		},
+		{
+			name: "bad batch",
+			path: "/api/shorten/batch",
+			body: `[
+				{
+					cor: "ind1",
+					origin: "https://pract.ru/url1"
+				},
+				{
+					cor: "ind2",
+					origin: "https://pract.ru/url2"
+				}
+			]`,
+			userID: testUserID,
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  500,
 			},
 		},
 	}
@@ -414,6 +574,40 @@ func TestHandlerPostBatch(t *testing.T) {
 			assert.True(t, assert.NotEmpty(t, getBody))
 		})
 	}
+}
+
+func TestPing(t *testing.T) {
+	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	t.Run("ping", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		hs.GetPingDB(w, httptest.NewRequest("GET", ts.URL+"/ping", nil))
+		res := w.Result()
+		assert.Equal(t, 200, res.StatusCode)
+	})
+
+	testRepo = nil
+	hs = NewHandlers(testRepo, cfg)
+	ts = httptest.NewServer(router)
+	defer ts.Close()
+	t.Run("no ping", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		hs.GetPingDB(w, httptest.NewRequest("GET", ts.URL+"/ping", nil))
+		res := w.Result()
+		assert.Equal(t, 500, res.StatusCode)
+	})
+}
+
+func TestNewURLRouter(t *testing.T) {
+	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
+	t.Run("create router", func(t *testing.T) {
+		res := NewURLRouter(testRepo, cfg)
+		assert.NotEmpty(t, res)
+	})
 }
 
 func BenchmarkPostURL(b *testing.B) {

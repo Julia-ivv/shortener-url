@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
@@ -10,7 +11,17 @@ import (
 	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
+	fmt.Println("Build version:", buildVersion)
+	fmt.Println("Build date:", buildDate)
+	fmt.Println("Build commit:", buildCommit)
+
 	cfg := config.NewConfig()
 
 	logger.ZapSugar = logger.NewLogger()
