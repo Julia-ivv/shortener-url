@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 
@@ -40,8 +39,7 @@ func TestNewFileURLs(t *testing.T) {
 func TestFileGetURL(t *testing.T) {
 	err := fillFile()
 	if err != nil {
-		fmt.Println("Unable to create file:", err)
-		return
+		t.Fatal("Unable to create file:", err)
 	}
 	testRepo, err := NewFileURLs(testFileName)
 	tests := []struct {
@@ -112,8 +110,7 @@ func TestFileAddBatch(t *testing.T) {
 func TestFileGetAllUserURLs(t *testing.T) {
 	err := fillFile()
 	if err != nil {
-		fmt.Println("Unable to create file:", err)
-		return
+		t.Fatal("Unable to create file:", err)
 	}
 	testRepo, errFile := NewFileURLs(testFileName)
 	t.Run("get user urls", func(t *testing.T) {
@@ -128,8 +125,7 @@ func TestFileGetAllUserURLs(t *testing.T) {
 func TestFileDeleteUserURLs(t *testing.T) {
 	err := fillFile()
 	if err != nil {
-		fmt.Println("Unable to create file:", err)
-		return
+		t.Fatal("Unable to create file:", err)
 	}
 	testRepo, errFile := NewFileURLs(testFileName)
 	t.Run("mark deleted", func(t *testing.T) {

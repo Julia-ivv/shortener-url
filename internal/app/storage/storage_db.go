@@ -95,7 +95,6 @@ func (db *DBURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int
 
 // AddURL adds a new short url.
 func (db *DBURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
-	// добавить урл в БД
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
