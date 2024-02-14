@@ -41,14 +41,14 @@ func HandlerWithLogging(h http.Handler) http.Handler {
 				status: 0,
 				size:   0,
 			}
-			logResponseWriter := logResponseWriter{
+			logRespWriter := logResponseWriter{
 				ResponseWriter: res,
 				responseInfo:   responseInfo,
 			}
 			uri := req.RequestURI
 			method := req.Method
 
-			h.ServeHTTP(&logResponseWriter, req)
+			h.ServeHTTP(&logRespWriter, req)
 			duration := time.Since(start)
 
 			logger.ZapSugar.Infoln(

@@ -21,6 +21,3 @@ vendor/
 # IDEs directories
 .idea
 .vscode
-
-cmd/shortener/data.json
-cmd/client

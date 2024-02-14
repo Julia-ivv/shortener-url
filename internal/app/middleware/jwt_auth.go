@@ -15,9 +15,11 @@ func HandlerWithAuth(h http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(res http.ResponseWriter, req *http.Request) {
 			var newctx context.Context
+			var userID int
+			var tokenString string
 			token, err := req.Cookie(authorizer.AccessToken)
 			if err != nil {
-				userID, tokenString, err := authorizer.BuildToken()
+				userID, tokenString, err = authorizer.BuildToken()
 				if err != nil {
 					http.Error(res, err.Error(), http.StatusInternalServerError)
 					return
@@ -31,7 +33,7 @@ func HandlerWithAuth(h http.Handler) http.Handler {
 					HttpOnly: true,
 				})
 			} else {
-				userID, err := authorizer.GetUserIDFromToken(token.Value)
+				userID, err = authorizer.GetUserIDFromToken(token.Value)
 				if err != nil {
 					var tokenErr *authorizer.TokenErr
 					isTokenError := errors.As(err, &tokenErr)
@@ -40,7 +42,7 @@ func HandlerWithAuth(h http.Handler) http.Handler {
 						return
 					}
 					if isTokenError && (tokenErr.ErrType == authorizer.NotValidToken) {
-						userID, tokenString, err := authorizer.BuildToken()
+						userID, tokenString, err = authorizer.BuildToken()
 						if err != nil {
 							http.Error(res, err.Error(), http.StatusInternalServerError)
 							return
