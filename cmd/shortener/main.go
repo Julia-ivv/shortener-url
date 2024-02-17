@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Julia-ivv/shortener-url.git/cmd/certgenerator"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/handlers"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
@@ -30,6 +31,7 @@ func main() {
 		"base url", cfg.URL,
 		"filename", cfg.FileName,
 		"db dsn", cfg.DBDSN,
+		"https enabled", cfg.EnableHTTPS,
 	)
 
 	repo, err := storage.NewURLs(*cfg)
@@ -39,6 +41,16 @@ func main() {
 
 	defer repo.Close()
 
+	certFile, privateKeyFile, err := certgenerator.GenCert(4096)
+	if err != nil {
+		logger.ZapSugar.Fatalw(err.Error(), "event", "create certificate or private key")
+	}
+	if cfg.EnableHTTPS {
+		err := http.ListenAndServeTLS(cfg.Host, certFile.Name(), privateKeyFile.Name(), handlers.NewURLRouter(repo, *cfg))
+		if err != nil {
+			logger.ZapSugar.Fatalw(err.Error(), "event", "start server")
+		}
+	}
 	err = http.ListenAndServe(cfg.Host, handlers.NewURLRouter(repo, *cfg))
 	if err != nil {
 		logger.ZapSugar.Fatalw(err.Error(), "event", "start server")

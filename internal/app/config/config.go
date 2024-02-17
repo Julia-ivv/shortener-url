@@ -17,6 +17,8 @@ type Flags struct {
 	FileName string `env:"FILE_STORAGE_PATH"`
 	// DBDSN (flag -d) - database connection address.
 	DBDSN string `env:"DATABASE_DSN"`
+	// EnableHTTPS (flag -s) - if true, https enabled.
+	EnableHTTPS bool `env:"ENABLE_HTTPS"`
 }
 
 // NewConfig creates an instance with settings from flags or environment variables.
@@ -27,6 +29,7 @@ func NewConfig() *Flags {
 	flag.StringVar(&c.URL, "b", "http://localhost:8080", "base address of the resulting URL")
 	flag.StringVar(&c.FileName, "f", "/tmp/short-url-db.json", "full filename to save URLs")
 	flag.StringVar(&c.DBDSN, "d", "", "database connection address")
+	flag.BoolVar(&c.EnableHTTPS, "s", false, "https enabled")
 	flag.Parse()
 
 	env.Parse(c)
