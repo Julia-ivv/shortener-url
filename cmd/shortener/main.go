@@ -32,6 +32,7 @@ func main() {
 		"filename", cfg.FileName,
 		"db dsn", cfg.DBDSN,
 		"https enabled", cfg.EnableHTTPS,
+		"config file", cfg.ConfigFileName,
 	)
 
 	repo, err := storage.NewURLs(*cfg)
