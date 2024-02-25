@@ -42,12 +42,12 @@ func main() {
 
 	defer repo.Close()
 
-	certFile, privateKeyFile, err := certgenerator.GenCert(4096)
-	if err != nil {
-		logger.ZapSugar.Fatalw(err.Error(), "event", "create certificate or private key")
-	}
 	if cfg.EnableHTTPS {
-		err := http.ListenAndServeTLS(cfg.Host, certFile.Name(), privateKeyFile.Name(), handlers.NewURLRouter(repo, *cfg))
+		certFile, privateKeyFile, err := certgenerator.GenCert(4096)
+		if err != nil {
+			logger.ZapSugar.Fatalw(err.Error(), "event", "create certificate or private key")
+		}
+		err = http.ListenAndServeTLS(cfg.Host, certFile.Name(), privateKeyFile.Name(), handlers.NewURLRouter(repo, *cfg))
 		if err != nil {
 			logger.ZapSugar.Fatalw(err.Error(), "event", "start server")
 		}

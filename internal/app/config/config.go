@@ -90,9 +90,11 @@ func NewConfig() *Flags {
 
 	env.Parse(c)
 
-	err := readFromConf(c)
-	if err != nil {
-		logger.ZapSugar.Infow("reading configuration file", err)
+	if c.ConfigFileName != "" {
+		err := readFromConf(c)
+		if err != nil {
+			logger.ZapSugar.Infow("reading configuration file", err)
+		}
 	}
 
 	return c
