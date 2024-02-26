@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -18,7 +19,7 @@ func ExampleHandlers_PostURL() {
 	const userContextKey key = "user"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Post("/", AddContext(hs.PostURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -49,7 +50,7 @@ func ExampleHandlers_PostJSON() {
 	const userContextKey key = "user"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Post(path, AddContext(hs.PostJSON))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -80,7 +81,7 @@ func ExampleHandlers_PostBatch() {
 	const userContextKey key = "user"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Post(path, AddContext(hs.PostBatch))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -134,7 +135,7 @@ func ExampleHandlers_GetURL() {
 	const userContextKey key = "user"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Get(path+"{shortURL}", AddContext(hs.GetURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -174,7 +175,7 @@ func ExampleHandlers_GetUserURLs() {
 	const userContextKey key = "user"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Get(path, AddContext(hs.GetUserURLs))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
