@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -169,7 +170,7 @@ func TestHandlerPostURL(t *testing.T) {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -243,7 +244,7 @@ func TestHandlerGetURL(t *testing.T) {
 	testRepo := &testURLs{originalURLs: testR}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -307,7 +308,7 @@ func TestHandlerDeleteUserURLs(t *testing.T) {
 	testRepo := &testURLs{originalURLs: testR}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -359,7 +360,7 @@ func TestHandlerPostJSON(t *testing.T) {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -420,7 +421,7 @@ func TestHandlerGetUserURLs(t *testing.T) {
 	testRepo := &testURLs{originalURLs: nil}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -486,7 +487,7 @@ func TestHandlerPostBatch(t *testing.T) {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -584,7 +585,7 @@ func TestHandlerPostBatch(t *testing.T) {
 func TestPing(t *testing.T) {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -597,7 +598,7 @@ func TestPing(t *testing.T) {
 	})
 
 	testRepo = nil
-	hs = NewHandlers(testRepo, cfg)
+	hs = NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	ts = httptest.NewServer(router)
 	defer ts.Close()
 	t.Run("no ping", func(t *testing.T) {
@@ -612,7 +613,7 @@ func TestPing(t *testing.T) {
 func TestNewURLRouter(t *testing.T) {
 	testRepo := &testURLs{originalURLs: make([]testURL, 0)}
 	t.Run("create router", func(t *testing.T) {
-		res := NewURLRouter(testRepo, cfg)
+		res := NewURLRouter(testRepo, cfg, &sync.WaitGroup{})
 		assert.NotEmpty(t, res)
 	})
 }
@@ -622,7 +623,7 @@ func BenchmarkPostURL(b *testing.B) {
 	path := "/"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Post(path, AddContext(hs.PostURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -640,7 +641,7 @@ func BenchmarkPostJSON(b *testing.B) {
 	path := "/api/shorten"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Post(path, AddContext(hs.PostJSON))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -658,7 +659,7 @@ func BenchmarkPostBatch(b *testing.B) {
 	path := "/api/shorten/batch"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Post(path, AddContext(hs.PostBatch))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -700,7 +701,7 @@ func BenchmarkGetURL(b *testing.B) {
 	path := "/"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Get(path+"{shortURL}", AddContext(hs.GetURL))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -724,7 +725,7 @@ func BenchmarkGetUserURLs(b *testing.B) {
 	path := "/api/user/urls"
 
 	router := chi.NewRouter()
-	hs := NewHandlers(testRepo, cfg)
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
 	router.Get(path, AddContext(hs.GetUserURLs))
 	ts := httptest.NewServer(router)
 	defer ts.Close()

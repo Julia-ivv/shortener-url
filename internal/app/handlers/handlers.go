@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgerrcode"
@@ -21,13 +22,15 @@ import (
 type Handlers struct {
 	stor storage.Repositories
 	cfg  config.Flags
+	wg   *sync.WaitGroup
 }
 
 // NewHandlers creates an instance with storage and settings for handlers.
-func NewHandlers(stor storage.Repositories, cfg config.Flags) *Handlers {
+func NewHandlers(stor storage.Repositories, cfg config.Flags, wg *sync.WaitGroup) *Handlers {
 	h := &Handlers{}
 	h.stor = stor
 	h.cfg = cfg
+	h.wg = wg
 	return h
 }
 
@@ -266,8 +269,10 @@ func (h *Handlers) DeleteUserURLs(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	h.wg.Add(1)
 	go func() {
 		h.stor.DeleteUserURLs(req.Context(), reqShortURLs, id)
+		h.wg.Done()
 	}()
 
 	res.Header().Set("Content-Type", "application/json")
@@ -275,8 +280,8 @@ func (h *Handlers) DeleteUserURLs(res http.ResponseWriter, req *http.Request) {
 }
 
 // NewURLRouter creates a router instance.
-func NewURLRouter(repo storage.Repositories, cfg config.Flags) chi.Router {
-	hs := NewHandlers(repo, cfg)
+func NewURLRouter(repo storage.Repositories, cfg config.Flags, wg *sync.WaitGroup) chi.Router {
+	hs := NewHandlers(repo, cfg, wg)
 	r := chi.NewRouter()
 	r.Use(mwPkg.HandlerWithLogging, mwPkg.HandlerWithGzipCompression)
 	r.Group(func(r chi.Router) {
