@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 
 	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
@@ -120,6 +121,25 @@ func (urls *MemURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userI
 		}
 	}
 	return nil
+}
+
+// GetStats gets statistics - amount URLs and users.
+func (urls *MemURLs) GetStats(ctx context.Context) (stats ServiceStats, err error) {
+	urls.Lock()
+	defer urls.Unlock()
+
+	stats.URLs = len(urls.originalURLs)
+	stats.Users = 0
+
+	tmp := make([]int, len(urls.originalURLs))
+	for _, v := range urls.originalURLs {
+		if !slices.Contains(tmp, v.userID) {
+			tmp = append(tmp, v.userID)
+			stats.Users++
+		}
+	}
+
+	return stats, nil
 }
 
 // PingStor checking access to storage.

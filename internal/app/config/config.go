@@ -26,6 +26,8 @@ type Flags struct {
 	ConfigFileName string `env:"CONFIG"`
 	// EnableHTTPS (flag -s) - if true, https enabled.
 	EnableHTTPS bool `env:"ENABLE_HTTPS" json:"enable_https"`
+	// TrustedSubnet (flag -t) - CIDR
+	TrustedSubnet string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 // Default values for flags.
@@ -71,6 +73,9 @@ func readFromConf(c *Flags) error {
 	if c.DBDSN == "" {
 		c.DBDSN = conf.DBDSN
 	}
+	if c.TrustedSubnet == "" {
+		c.TrustedSubnet = conf.TrustedSubnet
+	}
 
 	return nil
 }
@@ -86,6 +91,7 @@ func NewConfig() *Flags {
 	flag.StringVar(&c.ConfigFileName, "c", "", "the name of configuration file")
 	flag.StringVar(&c.ConfigFileName, "config", "", "the name of configuration file")
 	flag.BoolVar(&c.EnableHTTPS, "s", defHTTPS, "https enabled")
+	flag.StringVar(&c.TrustedSubnet, "t", "", "CIDR string")
 	flag.Parse()
 
 	env.Parse(c)

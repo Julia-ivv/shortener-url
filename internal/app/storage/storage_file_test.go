@@ -155,3 +155,18 @@ func TestFileClose(t *testing.T) {
 		}
 	})
 }
+
+func TestFileGetStats(t *testing.T) {
+	err := fillFile()
+	if err != nil {
+		t.Fatal("Unable to create file:", err)
+	}
+	testRepo, errFile := NewFileURLs(testFileName)
+	t.Run("get stats", func(t *testing.T) {
+		if assert.NoError(t, errFile) {
+			stats, err := testRepo.GetStats(context.Background())
+			assert.NoError(t, err)
+			assert.NotEmpty(t, stats)
+		}
+	})
+}

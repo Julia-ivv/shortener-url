@@ -14,3 +14,17 @@ func TestNewConfig(t *testing.T) {
 		assert.NotEmpty(t, flags.FileName)
 	}
 }
+
+func TestReadFromConf(t *testing.T) {
+	c := Flags{
+		Host:           "",
+		URL:            "",
+		FileName:       "",
+		DBDSN:          "",
+		ConfigFileName: "for_tests.json",
+		EnableHTTPS:    false,
+		TrustedSubnet:  "",
+	}
+	err := readFromConf(&c)
+	assert.NoError(t, err)
+}

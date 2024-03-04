@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -117,6 +118,21 @@ func (urls *testURLs) Close() (err error) {
 	return nil
 }
 
+func (urls *testURLs) GetStats(ctx context.Context) (stats storage.ServiceStats, err error) {
+	stats.URLs = len(urls.originalURLs)
+	stats.Users = 0
+
+	tmp := make([]int, len(urls.originalURLs))
+	for _, v := range urls.originalURLs {
+		if !slices.Contains(tmp, v.userID) {
+			tmp = append(tmp, v.userID)
+			stats.Users++
+		}
+	}
+
+	return stats, nil
+}
+
 func AddContext(h http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(res http.ResponseWriter, req *http.Request) {
@@ -134,6 +150,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 	req, err := http.NewRequestWithContext(context.WithValue(context.Background(), authorizer.UserContextKey, userID),
 		method, ts.URL+path, body)
 	require.NoError(t, err)
+	req.Header.Add("X-Real-IP", "192.168.0.1")
 
 	resp, err := client.Do(req)
 	require.NoError(t, err)
@@ -616,6 +633,81 @@ func TestNewURLRouter(t *testing.T) {
 		res := NewURLRouter(testRepo, cfg, &sync.WaitGroup{})
 		assert.NotEmpty(t, res)
 	})
+}
+
+func TestHandlerGetStats(t *testing.T) {
+	testR := make([]testURL, 0)
+	testR = append(testR, testURL{
+		userID:      testUserID,
+		shortURL:    "EwH",
+		deletedFlag: false,
+		originURL:   "https://practicum.yandex.ru/",
+	})
+	testR = append(testR, testURL{
+		userID:      testUserID,
+		shortURL:    "Eorp",
+		deletedFlag: false,
+		originURL:   "https://yandex.ru/",
+	})
+	testRepo := &testURLs{originalURLs: testR}
+
+	router := chi.NewRouter()
+	hs := NewHandlers(testRepo, cfg, &sync.WaitGroup{})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	path := "/api/internal/stats"
+	router.Get(path, AddContext(hs.GetStats))
+	type want struct {
+		urls       int
+		users      int
+		statusCode int
+	}
+	tests := []struct {
+		name          string
+		path          string
+		trustedSubnet string
+		want          want
+		userID        int
+	}{
+		{
+			name:          "status OK",
+			path:          path,
+			trustedSubnet: "192.168.0.0/24",
+			userID:        testUserID,
+			want:          want{statusCode: 200, urls: 2, users: 1},
+		},
+		{
+			name:          "status forbidden",
+			path:          path,
+			trustedSubnet: "192.168.1.0/24",
+			userID:        testUserID,
+			want:          want{statusCode: 403, urls: 0, users: 0},
+		},
+		{
+			name:          "status forbidden, empty subnet",
+			path:          path,
+			trustedSubnet: "",
+			userID:        testUserID,
+			want:          want{statusCode: 403, urls: 0, users: 0},
+		},
+		{
+			name:          "wrong subnet",
+			path:          path,
+			trustedSubnet: "19216810/24",
+			userID:        testUserID,
+			want:          want{statusCode: 500, urls: 0, users: 0},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			hs.cfg.TrustedSubnet = test.trustedSubnet
+			resp, _ := testRequest(t, ts, "GET", test.path, nil, test.userID)
+			defer resp.Body.Close()
+			assert.Equal(t, test.want.statusCode, resp.StatusCode)
+		})
+	}
 }
 
 func BenchmarkPostURL(b *testing.B) {

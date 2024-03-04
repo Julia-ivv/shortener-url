@@ -102,3 +102,73 @@ func TestDBPingStor(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestDBGetStats(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("An error occurred while creating mock: %s", err)
+	}
+	defer db.Close()
+
+	testDB := DBURLs{dbHandle: db}
+
+	tests := []struct {
+		name           string
+		queryStr       string
+		args           string
+		expectedRows   []string
+		expectedValues []driver.Value
+		expectedStats  ServiceStats
+	}{
+		{
+			name:           "get stats",
+			queryStr:       "SELECT COUNT(.+) AS urls, COUNT(.+) AS users FROM urls",
+			expectedRows:   []string{"urls", "users"},
+			expectedValues: []driver.Value{2, 1},
+			expectedStats:  ServiceStats{URLs: 2, Users: 1},
+		},
+	}
+
+	for _, test := range tests {
+		rows := sqlmock.NewRows(test.expectedRows).AddRow(test.expectedValues...)
+
+		mock.ExpectQuery(test.queryStr).WithoutArgs().WillReturnRows(rows)
+
+		t.Run(test.name, func(t *testing.T) {
+			stats, err := testDB.GetStats(context.Background())
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedStats, stats)
+		})
+	}
+}
+
+func TestDBAddURL(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("An error occurred while creating mock: %s", err)
+	}
+	defer db.Close()
+
+	// testDB := DBURLs{dbHandle: db}
+
+	tests := []struct {
+		name     string
+		queryStr string
+		args     []driver.Value
+	}{
+		{
+			name:     "add url",
+			queryStr: "INSERT INTO urls",
+			args:     []driver.Value{123, "EwH", "https://practicum.yandex.ru/"},
+		},
+	}
+
+	for _, test := range tests {
+		mock.ExpectExec(test.queryStr).WithArgs(test.args...).WillReturnResult(sqlmock.NewResult(1, 1))
+
+		t.Run(test.name, func(t *testing.T) {
+			// err := addInDB(context.Background(), &testDB, "https://practicum.yandex.ru/", "EwH", 123)
+			assert.NoError(t, err)
+		})
+	}
+}

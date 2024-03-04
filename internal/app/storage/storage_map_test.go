@@ -173,3 +173,34 @@ func TestClose(t *testing.T) {
 		assert.NoError(t, testRepo.Close())
 	})
 }
+
+func TestGetStats(t *testing.T) {
+	testRepo := NewMapURLs()
+	testR := make([]MemURL, 0)
+	testR = append(testR, MemURL{
+		userID:      testUserID,
+		shortURL:    "EwH",
+		originURL:   "https://practicum.yandex.ru/",
+		deletedFlag: false,
+	})
+	testR = append(testR, MemURL{
+		userID:      testUserID,
+		shortURL:    "Ert",
+		originURL:   "https://mail.ru/",
+		deletedFlag: false,
+	})
+	testR = append(testR, MemURL{
+		userID:      88,
+		shortURL:    "Ert",
+		originURL:   "https://mail.ru/",
+		deletedFlag: false,
+	})
+	testRepo.originalURLs = testR
+
+	t.Run("get stats", func(t *testing.T) {
+		stats, err := testRepo.GetStats(context.Background())
+		if assert.NoError(t, err) {
+			assert.Equal(t, ServiceStats{Users: 2, URLs: 3}, stats)
+		}
+	})
+}

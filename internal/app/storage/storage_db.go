@@ -195,6 +195,21 @@ func (db *DBURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID i
 	return nil
 }
 
+// GetStats gets statistics - amount URLs and users.
+func (db *DBURLs) GetStats(ctx context.Context) (stats ServiceStats, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	row := db.dbHandle.QueryRowContext(ctx,
+		"SELECT COUNT(short_url) AS urls, COUNT(DISTINCT user_id) AS users FROM urls")
+	err = row.Scan(&stats.URLs, &stats.Users)
+	if err != nil {
+		return ServiceStats{}, err
+	}
+
+	return stats, nil
+}
+
 // PingStor checking access to storage.
 func (db *DBURLs) PingStor(ctx context.Context) error {
 	return db.dbHandle.PingContext(ctx)
