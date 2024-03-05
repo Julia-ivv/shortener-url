@@ -92,7 +92,7 @@ func (db *DBURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int
 }
 
 // AddURL adds a new short url.
-func (db *DBURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (err error) {
+func (db *DBURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (findURL string, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
@@ -103,23 +103,23 @@ func (db *DBURLs) AddURL(ctx context.Context, shortURL string, originURL string,
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			row := db.dbHandle.QueryRowContext(ctx,
 				"SELECT short_url FROM urls WHERE original_url=$1 AND user_id=$2", originURL, userID)
-			errScan := row.Scan(&shortURL)
+			errScan := row.Scan(&findURL)
 			if errScan != nil {
-				return err
+				return "", err
 			}
-			return err
+			return findURL, err
 		}
-		return err
+		return "", err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if rows != 1 {
-		return fmt.Errorf("expected to affect 1 row, affected %d", rows)
+		return "", fmt.Errorf("expected to affect 1 row, affected %d", rows)
 	}
-	return nil
+	return "", nil
 }
 
 // AddBatch adds a batch of new short URLs.

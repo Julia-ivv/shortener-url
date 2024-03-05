@@ -62,7 +62,7 @@ func (urls *testURLs) GetURL(ctx context.Context, shortURL string) (originURL st
 	return "", false, false
 }
 
-func (urls *testURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (err error) {
+func (urls *testURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (findURL string, err error) {
 	inc++
 	short := strconv.Itoa(inc)
 	urls.originalURLs = append(urls.originalURLs, testURL{
@@ -70,7 +70,7 @@ func (urls *testURLs) AddURL(ctx context.Context, shortURL string, originURL str
 		shortURL:  short,
 		originURL: originURL,
 	})
-	return nil
+	return "", nil
 }
 
 func (urls *testURLs) AddBatch(ctx context.Context, shortURLBatch []storage.ResponseBatch, originURLBatch []storage.RequestBatch, userID int) (err error) {

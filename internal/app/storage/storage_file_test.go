@@ -76,7 +76,7 @@ func TestFileAddURL(t *testing.T) {
 	testRepo, err := NewFileURLs(testFileName)
 	t.Run("add url in file", func(t *testing.T) {
 		if assert.NoError(t, err) {
-			err := testRepo.AddURL(context.Background(), "sh", "https://mail.ru", testUserID)
+			_, err := testRepo.AddURL(context.Background(), "sh", "https://mail.ru", testUserID)
 			assert.NoError(t, err)
 		}
 	})

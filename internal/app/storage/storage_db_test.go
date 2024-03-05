@@ -198,7 +198,7 @@ func TestDBAddURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			test.mockBehavior(test.testShortURL, test.testOriginalURL, testUserID)
-			err := testDB.AddURL(context.Background(), test.testShortURL, test.testOriginalURL, testUserID)
+			_, err := testDB.AddURL(context.Background(), test.testShortURL, test.testOriginalURL, testUserID)
 			if test.wantErr {
 				assert.Error(t, err)
 			} else {

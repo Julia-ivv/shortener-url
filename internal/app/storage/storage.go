@@ -37,7 +37,7 @@ type Repositories interface {
 	// GetURL gets the original URL matching the short URL.
 	GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool)
 	// AddURL adds a new short url.
-	AddURL(ctx context.Context, shortURL string, originURL string, userID int) (err error)
+	AddURL(ctx context.Context, shortURL string, originURL string, userID int) (findURL string, err error)
 	// AddBatch adds a batch of new short URLs.
 	AddBatch(ctx context.Context, shortURLBatch []ResponseBatch, originURLBatch []RequestBatch, userID int) (err error)
 	// GetAllUserURLs gets all user's short url.

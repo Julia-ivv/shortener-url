@@ -42,7 +42,7 @@ func (urls *MemURLs) GetURL(ctx context.Context, shortURL string) (originURL str
 }
 
 // AddURL adds a new short url.
-func (urls *MemURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (err error) {
+func (urls *MemURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (findURL string, err error) {
 	urls.Lock()
 	defer urls.Unlock()
 
@@ -52,7 +52,7 @@ func (urls *MemURLs) AddURL(ctx context.Context, shortURL string, originURL stri
 		originURL:   originURL,
 		deletedFlag: false,
 	})
-	return nil
+	return "", nil
 }
 
 // AddBatch adds a batch of new short URLs.

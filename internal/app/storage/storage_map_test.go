@@ -61,7 +61,7 @@ func TestGetURL(t *testing.T) {
 func TestAddURL(t *testing.T) {
 	testRepo := NewMapURLs()
 	t.Run("add url in storage", func(t *testing.T) {
-		err := testRepo.AddURL(context.Background(), "rtt", "https://mail.ru/", testUserID)
+		_, err := testRepo.AddURL(context.Background(), "rtt", "https://mail.ru/", testUserID)
 		assert.NoError(t, err)
 	})
 }

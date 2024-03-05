@@ -61,12 +61,17 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "500 internal server error", http.StatusInternalServerError)
 		return
 	}
-	err = h.stor.AddURL(req.Context(), shortURL, string(postURL), id)
+	findURL, err := h.stor.AddURL(req.Context(), shortURL, string(postURL), id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			res.Header().Set("Content-Type", "text/plain")
 			res.WriteHeader(http.StatusConflict)
+			_, err = res.Write([]byte(h.cfg.URL + "/" + findURL))
+			if err != nil {
+				http.Error(res, err.Error(), http.StatusBadRequest)
+				return
+			}
 		} else {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -74,11 +79,11 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 	} else {
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-	}
-	_, err = res.Write([]byte(h.cfg.URL + "/" + shortURL))
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+		_, err = res.Write([]byte(h.cfg.URL + "/" + shortURL))
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 }
 
@@ -119,13 +124,14 @@ func (h *Handlers) PostJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "500 internal server error", http.StatusInternalServerError)
 		return
 	}
-	err = h.stor.AddURL(req.Context(), shortURL, string(reqURL.URL), id)
+	findURL, err := h.stor.AddURL(req.Context(), shortURL, string(reqURL.URL), id)
 
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			res.Header().Set("Content-Type", "application/json")
 			res.WriteHeader(http.StatusConflict)
+			shortURL = findURL
 		} else {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return

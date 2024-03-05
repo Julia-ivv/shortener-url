@@ -75,7 +75,7 @@ func (f *FileURLs) GetURL(ctx context.Context, shortURL string) (originURL strin
 }
 
 // AddURL adds a new short url.
-func (f *FileURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (err error) {
+func (f *FileURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (findURL string, err error) {
 	url := FileURL{
 		UserID:      userID,
 		ShortURL:    shortURL,
@@ -89,18 +89,18 @@ func (f *FileURLs) AddURL(ctx context.Context, shortURL string, originURL string
 	wr := bufio.NewWriter(f.file)
 	data, err := json.Marshal(&url)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if _, err := wr.Write(data); err != nil {
-		return err
+		return "", err
 	}
 	if err := wr.WriteByte('\n'); err != nil {
-		return err
+		return "", err
 	}
 
 	f.Urls = append(f.Urls, url)
 
-	return wr.Flush()
+	return "", wr.Flush()
 }
 
 // AddBatch adds a batch of new short URLs.
