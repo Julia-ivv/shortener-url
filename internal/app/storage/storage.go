@@ -18,8 +18,10 @@ type RequestBatch struct {
 type ResponseBatch struct {
 	// CorrelationID - URL ID for correlation with the request.
 	CorrelationID string `json:"correlation_id"`
-	// ShortURL - short url.
-	ShortURL string `json:"short_url"`
+	// ShortURL - short url for response.
+	ShortURLFull string `json:"short_url"`
+	// ShURL - short url for adding in storage.
+	ShortURL string `json:"-"`
 }
 
 // ServiceStats stores the amount of all users and URLs in the service.
@@ -35,9 +37,9 @@ type Repositories interface {
 	// GetURL gets the original URL matching the short URL.
 	GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool)
 	// AddURL adds a new short url.
-	AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error)
+	AddURL(ctx context.Context, shortURL string, originURL string, userID int) (err error)
 	// AddBatch adds a batch of new short URLs.
-	AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error)
+	AddBatch(ctx context.Context, shortURLBatch []ResponseBatch, originURLBatch []RequestBatch, userID int) (err error)
 	// GetAllUserURLs gets all user's short url.
 	GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []UserURL, err error)
 	// DeleteUserURLs sets the deletion flag to the user URLs sent in the request.

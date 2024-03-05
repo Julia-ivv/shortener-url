@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
@@ -149,26 +150,199 @@ func TestDBAddURL(t *testing.T) {
 	}
 	defer db.Close()
 
-	// testDB := DBURLs{dbHandle: db}
+	testDB := DBURLs{dbHandle: db}
+	type mockBehavior func(short string, origin string, id int)
 
 	tests := []struct {
-		name     string
-		queryStr string
-		args     []driver.Value
+		name            string
+		testShortURL    string
+		testOriginalURL string
+		mockBehavior    mockBehavior
+		wantErr         bool
 	}{
 		{
-			name:     "add url",
-			queryStr: "INSERT INTO urls",
-			args:     []driver.Value{123, "EwH", "https://practicum.yandex.ru/"},
+			name:            "add url ok",
+			testShortURL:    "EwH",
+			testOriginalURL: "https://practicum.yandex.ru/",
+			mockBehavior: func(short string, origin string, id int) {
+				mock.ExpectExec("INSERT INTO urls").
+					WithArgs([]driver.Value{testUserID, short, origin}...).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+			},
+			wantErr: false,
+		},
+		{
+			name:            "insert error",
+			testShortURL:    "EwH",
+			testOriginalURL: "https://practicum.yandex.ru/",
+			mockBehavior: func(short string, origin string, id int) {
+				mock.ExpectExec("INSERT INTO urls").
+					WithArgs([]driver.Value{testUserID, short, origin}...).
+					WillReturnError(errors.New("some error"))
+			},
+			wantErr: true,
+		},
+		{
+			name:            "insert error rows",
+			testShortURL:    "EwH",
+			testOriginalURL: "https://practicum.yandex.ru/",
+			mockBehavior: func(short string, origin string, id int) {
+				mock.ExpectExec("INSERT INTO urls").
+					WithArgs([]driver.Value{testUserID, short, origin}...).
+					WillReturnResult(sqlmock.NewResult(2, 2))
+			},
+			wantErr: true,
 		},
 	}
 
 	for _, test := range tests {
-		mock.ExpectExec(test.queryStr).WithArgs(test.args...).WillReturnResult(sqlmock.NewResult(1, 1))
-
 		t.Run(test.name, func(t *testing.T) {
-			// err := addInDB(context.Background(), &testDB, "https://practicum.yandex.ru/", "EwH", 123)
-			assert.NoError(t, err)
+			test.mockBehavior(test.testShortURL, test.testOriginalURL, testUserID)
+			err := testDB.AddURL(context.Background(), test.testShortURL, test.testOriginalURL, testUserID)
+			if test.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestDBAddBatch(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("An error occurred while creating mock: %s", err)
+	}
+	defer db.Close()
+
+	testDB := DBURLs{dbHandle: db}
+
+	type mockBehavior func(tResp []ResponseBatch, tReq []RequestBatch, id int)
+
+	tests := []struct {
+		name              string
+		mockBehavior      mockBehavior
+		testRequestBatch  []RequestBatch
+		testResponseBatch []ResponseBatch
+		wantErr           bool
+	}{
+		{
+			name: "add batch OK",
+			testRequestBatch: []RequestBatch{
+				{
+					CorrelationID: "ind1",
+					OriginalURL:   "https://pract.ru/url1",
+				},
+				{
+					CorrelationID: "ind2",
+					OriginalURL:   "https://pract.ru/url2",
+				},
+			},
+			testResponseBatch: []ResponseBatch{
+				{
+					CorrelationID: "ind1",
+					ShortURLFull:  "ggg",
+					ShortURL:      cfg.URL + "ggg",
+				},
+				{
+					CorrelationID: "ind2",
+					ShortURLFull:  "rrr",
+					ShortURL:      cfg.URL + "rrr",
+				},
+			},
+			mockBehavior: func(tResp []ResponseBatch, tReq []RequestBatch, id int) {
+				mock.ExpectBegin()
+				for k, v := range tResp {
+					mock.ExpectExec("INSERT INTO urls").
+						WithArgs([]driver.Value{id, v.ShortURL, tReq[k].OriginalURL}...).
+						WillReturnResult(sqlmock.NewResult(1, 1))
+				}
+				mock.ExpectCommit()
+			},
+			wantErr: false,
+		},
+		{
+			name: "insert error",
+			testRequestBatch: []RequestBatch{
+				{
+					CorrelationID: "ind1",
+					OriginalURL:   "https://pract.ru/url1",
+				},
+				{
+					CorrelationID: "ind2",
+					OriginalURL:   "https://pract.ru/url2",
+				},
+			},
+			testResponseBatch: []ResponseBatch{
+				{
+					CorrelationID: "ind1",
+					ShortURLFull:  "ggg",
+					ShortURL:      cfg.URL + "ggg",
+				},
+				{
+					CorrelationID: "ind2",
+					ShortURLFull:  "rrr",
+					ShortURL:      cfg.URL + "rrr",
+				},
+			},
+			mockBehavior: func(tResp []ResponseBatch, tReq []RequestBatch, id int) {
+				mock.ExpectBegin()
+				for k, v := range tResp {
+					mock.ExpectExec("INSERT INTO urls").
+						WithArgs([]driver.Value{id, v.ShortURL, tReq[k].OriginalURL}...).
+						WillReturnError(errors.New("some error"))
+				}
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "add error, rows",
+			testRequestBatch: []RequestBatch{
+				{
+					CorrelationID: "ind1",
+					OriginalURL:   "https://pract.ru/url1",
+				},
+				{
+					CorrelationID: "ind2",
+					OriginalURL:   "https://pract.ru/url2",
+				},
+			},
+			testResponseBatch: []ResponseBatch{
+				{
+					CorrelationID: "ind1",
+					ShortURLFull:  "ggg",
+					ShortURL:      cfg.URL + "ggg",
+				},
+				{
+					CorrelationID: "ind2",
+					ShortURLFull:  "rrr",
+					ShortURL:      cfg.URL + "rrr",
+				},
+			},
+			mockBehavior: func(tResp []ResponseBatch, tReq []RequestBatch, id int) {
+				mock.ExpectBegin()
+				for k, v := range tResp {
+					mock.ExpectExec("INSERT INTO urls").
+						WithArgs([]driver.Value{id, v.ShortURL, tReq[k].OriginalURL}...).
+						WillReturnResult(sqlmock.NewResult(2, 2))
+					mock.ExpectRollback()
+				}
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.mockBehavior(test.testResponseBatch, test.testRequestBatch, testUserID)
+
+			err := testDB.AddBatch(context.Background(), test.testResponseBatch, test.testRequestBatch, testUserID)
+			if test.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

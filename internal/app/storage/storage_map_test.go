@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,33 +61,38 @@ func TestGetURL(t *testing.T) {
 func TestAddURL(t *testing.T) {
 	testRepo := NewMapURLs()
 	t.Run("add url in storage", func(t *testing.T) {
-		short, err := testRepo.AddURL(context.Background(), "https://mail.ru/", testUserID)
+		err := testRepo.AddURL(context.Background(), "rtt", "https://mail.ru/", testUserID)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, short)
 	})
 }
 
 func TestAddBatch(t *testing.T) {
 	testRepo := NewMapURLs()
-	var testBatch []RequestBatch
-	err := json.Unmarshal([]byte(`
-		[
-			{
-				"correlation_id": "ind1",
-				"original_url": "https://pract.ru/url1"
-			},
-			{
-				"correlation_id": "ind2",
-				"original_url": "https://pract.ru/url2"
-			}
-		]`), &testBatch)
-
+	testRequestBatch := []RequestBatch{
+		{
+			CorrelationID: "ind1",
+			OriginalURL:   "https://pract.ru/url1",
+		},
+		{
+			CorrelationID: "ind2",
+			OriginalURL:   "https://pract.ru/url2",
+		},
+	}
+	testResponseBatch := []ResponseBatch{
+		{
+			CorrelationID: "ind1",
+			ShortURLFull:  "ggg",
+			ShortURL:      cfg.URL + "ggg",
+		},
+		{
+			CorrelationID: "ind2",
+			ShortURLFull:  "rrr",
+			ShortURL:      cfg.URL + "rrr",
+		},
+	}
 	t.Run("add batch url in storage", func(t *testing.T) {
-		if assert.NoError(t, err) {
-			short, err := testRepo.AddBatch(context.Background(), testBatch, cfg.URL, testUserID)
-			assert.NoError(t, err)
-			assert.NotEmpty(t, short)
-		}
+		err := testRepo.AddBatch(context.Background(), testResponseBatch, testRequestBatch, testUserID)
+		assert.NoError(t, err)
 	})
 }
 

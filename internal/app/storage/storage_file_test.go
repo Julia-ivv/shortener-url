@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"testing"
 
@@ -77,32 +76,41 @@ func TestFileAddURL(t *testing.T) {
 	testRepo, err := NewFileURLs(testFileName)
 	t.Run("add url in file", func(t *testing.T) {
 		if assert.NoError(t, err) {
-			short, err := testRepo.AddURL(context.Background(), "https://mail.ru", testUserID)
+			err := testRepo.AddURL(context.Background(), "sh", "https://mail.ru", testUserID)
 			assert.NoError(t, err)
-			assert.NotEmpty(t, short)
 		}
 	})
 }
 
 func TestFileAddBatch(t *testing.T) {
 	testRepo, errFile := NewFileURLs(testFileName)
-	var testBatch []RequestBatch
-	err := json.Unmarshal([]byte(`
-		[
-			{
-				"correlation_id": "ind1",
-				"original_url": "https://pract.ru/url1"
-			},
-			{
-				"correlation_id": "ind2",
-				"original_url": "https://pract.ru/url2"
-			}
-		]`), &testBatch)
+	testRequestBatch := []RequestBatch{
+		{
+			CorrelationID: "ind1",
+			OriginalURL:   "https://pract.ru/url1",
+		},
+		{
+			CorrelationID: "ind2",
+			OriginalURL:   "https://pract.ru/url2",
+		},
+	}
+	testResponseBatch := []ResponseBatch{
+		{
+			CorrelationID: "ind1",
+			ShortURLFull:  "ggg",
+			ShortURL:      cfg.URL + "ggg",
+		},
+		{
+			CorrelationID: "ind2",
+			ShortURLFull:  "rrr",
+			ShortURL:      cfg.URL + "rrr",
+		},
+	}
+
 	t.Run("add batch in file", func(t *testing.T) {
-		if assert.NoError(t, errFile) && assert.NoError(t, err) {
-			batch, err := testRepo.AddBatch(context.Background(), testBatch, cfg.URL, testUserID)
+		if assert.NoError(t, errFile) {
+			err := testRepo.AddBatch(context.Background(), testResponseBatch, testRequestBatch, testUserID)
 			assert.NoError(t, err)
-			assert.NotEmpty(t, batch)
 		}
 	})
 }

@@ -17,6 +17,7 @@ import (
 	mwInt "github.com/Julia-ivv/shortener-url.git/internal/app/middleware"
 	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
 	mwPkg "github.com/Julia-ivv/shortener-url.git/pkg/middleware"
+	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // Handlers stores the repository and settings of this application.
@@ -54,7 +55,13 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "request with empty body", http.StatusBadRequest)
 		return
 	}
-	shortURL, err := h.stor.AddURL(req.Context(), string(postURL), id)
+
+	shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
+	if err != nil {
+		http.Error(res, "500 internal server error", http.StatusInternalServerError)
+		return
+	}
+	err = h.stor.AddURL(req.Context(), shortURL, string(postURL), id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -106,7 +113,13 @@ func (h *Handlers) PostJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	json.Unmarshal(reqJSON, &reqURL)
-	shortURL, err := h.stor.AddURL(req.Context(), string(reqURL.URL), id)
+
+	shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
+	if err != nil {
+		http.Error(res, "500 internal server error", http.StatusInternalServerError)
+		return
+	}
+	err = h.stor.AddURL(req.Context(), shortURL, string(reqURL.URL), id)
 
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -164,7 +177,20 @@ func (h *Handlers) PostBatch(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "empty request", http.StatusBadRequest)
 		return
 	}
-	resBatch, err := h.stor.AddBatch(req.Context(), reqBatch, h.cfg.URL+"/", id)
+
+	resBatch := make([]storage.ResponseBatch, len(reqBatch))
+	for k, v := range reqBatch {
+		shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
+		if err != nil {
+			http.Error(res, "500 internal server error", http.StatusInternalServerError)
+			return
+		}
+		resBatch[k].CorrelationID = v.CorrelationID
+		resBatch[k].ShortURLFull = h.cfg.URL + "/" + shortURL
+		resBatch[k].ShortURL = shortURL
+	}
+
+	err = h.stor.AddBatch(req.Context(), resBatch, reqBatch, id)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

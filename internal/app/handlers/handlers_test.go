@@ -62,7 +62,7 @@ func (urls *testURLs) GetURL(ctx context.Context, shortURL string) (originURL st
 	return "", false, false
 }
 
-func (urls *testURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
+func (urls *testURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (err error) {
 	inc++
 	short := strconv.Itoa(inc)
 	urls.originalURLs = append(urls.originalURLs, testURL{
@@ -70,27 +70,21 @@ func (urls *testURLs) AddURL(ctx context.Context, originURL string, userID int) 
 		shortURL:  short,
 		originURL: originURL,
 	})
-	return short, nil
+	return nil
 }
 
-func (urls *testURLs) AddBatch(ctx context.Context, originURLBatch []storage.RequestBatch, baseURL string, userID int) (shortURLBatch []storage.ResponseBatch, err error) {
+func (urls *testURLs) AddBatch(ctx context.Context, shortURLBatch []storage.ResponseBatch, originURLBatch []storage.RequestBatch, userID int) (err error) {
 	allUrls := make([]testURL, len(originURLBatch))
-	shortURLBatch = make([]storage.ResponseBatch, len(originURLBatch))
-	for _, v := range originURLBatch {
-		sURL := strconv.Itoa(inc)
-		shortURLBatch = append(shortURLBatch, storage.ResponseBatch{
-			CorrelationID: v.CorrelationID,
-			ShortURL:      baseURL + sURL,
-		})
+	for k, v := range shortURLBatch {
 		allUrls = append(allUrls, testURL{
 			userID:    userID,
-			shortURL:  sURL,
-			originURL: v.OriginalURL,
+			shortURL:  v.ShortURL,
+			originURL: originURLBatch[k].OriginalURL,
 		})
 	}
 
 	urls.originalURLs = append(urls.originalURLs, allUrls...)
-	return shortURLBatch, nil
+	return nil
 }
 
 func (urls *testURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int) (userURLs []storage.UserURL, err error) {
