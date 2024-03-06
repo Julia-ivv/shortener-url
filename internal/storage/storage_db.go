@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/deleter"
+	"github.com/Julia-ivv/shortener-url.git/internal/deleter"
 	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
 )
 

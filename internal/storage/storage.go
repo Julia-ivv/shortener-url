@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
+	"github.com/Julia-ivv/shortener-url.git/internal/config"
 )
 
 // RequestBatch stores data from the request body for adding a batch of URLs.

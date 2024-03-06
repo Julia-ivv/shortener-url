@@ -12,10 +12,10 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
-	mwInt "github.com/Julia-ivv/shortener-url.git/internal/app/middleware"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
+	"github.com/Julia-ivv/shortener-url.git/internal/config"
+	mwInt "github.com/Julia-ivv/shortener-url.git/internal/middleware"
+	"github.com/Julia-ivv/shortener-url.git/internal/storage"
 	mwPkg "github.com/Julia-ivv/shortener-url.git/pkg/middleware"
 	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )

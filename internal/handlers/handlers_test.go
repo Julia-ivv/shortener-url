@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
+	"github.com/Julia-ivv/shortener-url.git/internal/config"
+	"github.com/Julia-ivv/shortener-url.git/internal/storage"
 )
 
 const testUserID = 123
