@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
+	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
 )
 
 // HandlerWithAuth adds user authentication to the handler.

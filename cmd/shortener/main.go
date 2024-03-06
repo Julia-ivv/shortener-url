@@ -11,9 +11,9 @@ import (
 	"syscall"
 
 	"github.com/Julia-ivv/shortener-url.git/cmd/certgenerator"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/handlers"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+	"github.com/Julia-ivv/shortener-url.git/internal/config"
+	"github.com/Julia-ivv/shortener-url.git/internal/handlers"
+	"github.com/Julia-ivv/shortener-url.git/internal/storage"
 	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
 )
 
