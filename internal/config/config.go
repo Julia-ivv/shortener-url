@@ -26,8 +26,10 @@ type Flags struct {
 	ConfigFileName string `env:"CONFIG"`
 	// EnableHTTPS (flag -s) - if true, https enabled.
 	EnableHTTPS bool `env:"ENABLE_HTTPS" json:"enable_https"`
-	// TrustedSubnet (flag -t) - CIDR
+	// TrustedSubnet (flag -t) - CIDR.
 	TrustedSubnet string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
+	// GRPC (flag -g) - port for gRPC, e.g. :3200.
+	GRPC string `env:"GRPC_PORT" json:"grpc"`
 }
 
 // Default values for flags.
@@ -36,6 +38,7 @@ const (
 	defURL      string = "http://localhost:8080"
 	defFileName string = "/tmp/short-url-db.json"
 	defHTTPS    bool   = false
+	defGRPC     string = ":3200"
 )
 
 // readFromConf reads flag values from configuration file.
@@ -76,6 +79,9 @@ func readFromConf(c *Flags) error {
 	if c.TrustedSubnet == "" {
 		c.TrustedSubnet = conf.TrustedSubnet
 	}
+	if c.GRPC == "" {
+		c.GRPC = conf.GRPC
+	}
 
 	return nil
 }
@@ -92,6 +98,7 @@ func NewConfig() *Flags {
 	flag.StringVar(&c.ConfigFileName, "config", "", "the name of configuration file")
 	flag.BoolVar(&c.EnableHTTPS, "s", defHTTPS, "https enabled")
 	flag.StringVar(&c.TrustedSubnet, "t", "", "CIDR string")
+	flag.StringVar(&c.GRPC, "g", defGRPC, "gRPC port")
 	flag.Parse()
 
 	env.Parse(c)
