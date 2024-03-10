@@ -37,7 +37,7 @@ func NewShortenerServer(stor storage.Repositories, cfg config.Flags, wg *sync.Wa
 }
 
 // GetURL gets a long URL from the storage using shortURL.
-func (h *ShortenerServer) GetUrl(ctx context.Context, in *pb.GetUrlRequest) (*pb.GetUrlResponse, error) {
+func (h *ShortenerServer) GetURL(ctx context.Context, in *pb.GetUrlRequest) (*pb.GetUrlResponse, error) {
 	shortURL := in.ShortUrl
 
 	originURL, isDel, ok := h.stor.GetURL(ctx, shortURL)
@@ -101,7 +101,7 @@ func (h *ShortenerServer) PostBatch(ctx context.Context, in *pb.PostBatchRequest
 
 // PostURL gets a long URL from the request body.
 // Adds it to storage, returns a short URL in the response body.
-func (h *ShortenerServer) PostUrl(ctx context.Context, in *pb.PostUrlRequest) (*pb.PostUrlResponse, error) {
+func (h *ShortenerServer) PostURL(ctx context.Context, in *pb.PostUrlRequest) (*pb.PostUrlResponse, error) {
 	v := ctx.Value(authorizer.UserContextKey)
 	if v == nil {
 		return nil, status.Error(codes.Unauthenticated, "missing user id")
