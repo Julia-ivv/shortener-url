@@ -11,6 +11,8 @@ import (
 	"sync"
 	"syscall"
 
+	"google.golang.org/grpc"
+
 	"github.com/Julia-ivv/shortener-url.git/cmd/certgenerator"
 	"github.com/Julia-ivv/shortener-url.git/internal/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/grpcserver"
@@ -19,7 +21,6 @@ import (
 	pb "github.com/Julia-ivv/shortener-url.git/internal/proto"
 	"github.com/Julia-ivv/shortener-url.git/internal/storage"
 	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
-	"google.golang.org/grpc"
 )
 
 var (

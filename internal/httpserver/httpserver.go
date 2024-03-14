@@ -117,7 +117,11 @@ func (h *Handlers) PostJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "request with empty body", http.StatusBadRequest)
 		return
 	}
-	json.Unmarshal(reqJSON, &reqURL)
+	err = json.Unmarshal(reqJSON, &reqURL)
+	if err != nil {
+		http.Error(res, "500 internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
 	if err != nil {
@@ -125,7 +129,6 @@ func (h *Handlers) PostJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	findURL, err := h.stor.AddURL(req.Context(), shortURL, string(reqURL.URL), id)
-
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {

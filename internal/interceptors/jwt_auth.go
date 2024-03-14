@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
 )
 
 // HandlerWithAuth adds user authentication to the handler.

@@ -7,14 +7,15 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
-	"github.com/Julia-ivv/shortener-url.git/internal/config"
-	pb "github.com/Julia-ivv/shortener-url.git/internal/proto"
-	"github.com/Julia-ivv/shortener-url.git/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
+	"github.com/Julia-ivv/shortener-url.git/internal/config"
+	pb "github.com/Julia-ivv/shortener-url.git/internal/proto"
+	"github.com/Julia-ivv/shortener-url.git/internal/storage"
 )
 
 var cfg config.Flags

@@ -7,20 +7,21 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
-	"github.com/Julia-ivv/shortener-url.git/internal/config"
-	pb "github.com/Julia-ivv/shortener-url.git/internal/proto"
-	"github.com/Julia-ivv/shortener-url.git/internal/storage"
-	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
+	"github.com/Julia-ivv/shortener-url.git/internal/config"
+	pb "github.com/Julia-ivv/shortener-url.git/internal/proto"
+	"github.com/Julia-ivv/shortener-url.git/internal/storage"
+	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // ShortenerServer stores the repository and settings of this application.
-type ShortenerServer struct {
+type ShortenerGRPCServer struct {
 	pb.UnimplementedShortUrlServer
 	stor storage.Repositories
 	cfg  config.Flags
@@ -28,8 +29,8 @@ type ShortenerServer struct {
 }
 
 // NewShortenerServer creates an instance with storage and settings for grpc methods.
-func NewShortenerServer(stor storage.Repositories, cfg config.Flags, wg *sync.WaitGroup) *ShortenerServer {
-	h := &ShortenerServer{}
+func NewShortenerServer(stor storage.Repositories, cfg config.Flags, wg *sync.WaitGroup) *ShortenerGRPCServer {
+	h := &ShortenerGRPCServer{}
 	h.stor = stor
 	h.cfg = cfg
 	h.wg = wg
@@ -37,7 +38,7 @@ func NewShortenerServer(stor storage.Repositories, cfg config.Flags, wg *sync.Wa
 }
 
 // GetURL gets a long URL from the storage using shortURL.
-func (h *ShortenerServer) GetURL(ctx context.Context, in *pb.GetUrlRequest) (*pb.GetUrlResponse, error) {
+func (h *ShortenerGRPCServer) GetURL(ctx context.Context, in *pb.GetUrlRequest) (*pb.GetUrlResponse, error) {
 	shortURL := in.ShortUrl
 
 	originURL, isDel, ok := h.stor.GetURL(ctx, shortURL)
@@ -55,7 +56,7 @@ func (h *ShortenerServer) GetURL(ctx context.Context, in *pb.GetUrlRequest) (*pb
 
 // PostBatch gets a slice of the original URLs from the request body.
 // Adds it to storage, returns a slice of the short URLs in the response body.
-func (h *ShortenerServer) PostBatch(ctx context.Context, in *pb.PostBatchRequest) (*pb.PostBatchResponse, error) {
+func (h *ShortenerGRPCServer) PostBatch(ctx context.Context, in *pb.PostBatchRequest) (*pb.PostBatchResponse, error) {
 	v := ctx.Value(authorizer.UserContextKey)
 	if v == nil {
 		return nil, status.Error(codes.Unauthenticated, "missing user id")
@@ -101,7 +102,7 @@ func (h *ShortenerServer) PostBatch(ctx context.Context, in *pb.PostBatchRequest
 
 // PostURL gets a long URL from the request body.
 // Adds it to storage, returns a short URL in the response body.
-func (h *ShortenerServer) PostURL(ctx context.Context, in *pb.PostUrlRequest) (*pb.PostUrlResponse, error) {
+func (h *ShortenerGRPCServer) PostURL(ctx context.Context, in *pb.PostUrlRequest) (*pb.PostUrlResponse, error) {
 	v := ctx.Value(authorizer.UserContextKey)
 	if v == nil {
 		return nil, status.Error(codes.Unauthenticated, "missing user id")
@@ -129,7 +130,7 @@ func (h *ShortenerServer) PostURL(ctx context.Context, in *pb.PostUrlRequest) (*
 }
 
 // GetUserURLs gets all the user's short urls from the repository.
-func (h *ShortenerServer) GetUserUrls(ctx context.Context, in *pb.GetUserUrlsRequest) (*pb.GetUserUrlsResponse, error) {
+func (h *ShortenerGRPCServer) GetUserUrls(ctx context.Context, in *pb.GetUserUrlsRequest) (*pb.GetUserUrlsResponse, error) {
 	v := ctx.Value(authorizer.UserContextKey)
 	if v == nil {
 		return nil, status.Error(codes.Unauthenticated, "missing user id")
@@ -156,7 +157,7 @@ func (h *ShortenerServer) GetUserUrls(ctx context.Context, in *pb.GetUserUrlsReq
 }
 
 // DeleteUserURLs adds a removal flag for URLs from the request body.
-func (h *ShortenerServer) DeleteUserUrls(ctx context.Context, in *pb.DeleteUserUrlsRequest) (*pb.DeleteUserUrlsResponse, error) {
+func (h *ShortenerGRPCServer) DeleteUserUrls(ctx context.Context, in *pb.DeleteUserUrlsRequest) (*pb.DeleteUserUrlsResponse, error) {
 	v := ctx.Value(authorizer.UserContextKey)
 	if v == nil {
 		return nil, status.Error(codes.Unauthenticated, "missing user id")
@@ -178,7 +179,7 @@ func (h *ShortenerServer) DeleteUserUrls(ctx context.Context, in *pb.DeleteUserU
 
 // GetStats gets the amount of all users and URLs in the service.
 // Available only for IP addresses from a trusted subnet.
-func (h *ShortenerServer) GetStats(ctx context.Context, in *pb.GetStatsRequest) (*pb.GetStatsResponse, error) {
+func (h *ShortenerGRPCServer) GetStats(ctx context.Context, in *pb.GetStatsRequest) (*pb.GetStatsResponse, error) {
 	if h.cfg.TrustedSubnet == "" {
 		return nil, status.Error(codes.PermissionDenied, "empty trusted subnet")
 	}
@@ -215,7 +216,7 @@ func (h *ShortenerServer) GetStats(ctx context.Context, in *pb.GetStatsRequest) 
 }
 
 // GetPingDB checks storage access.
-func (h *ShortenerServer) GetPing(ctx context.Context, in *pb.GetPingRequest) (*pb.GetPingResponse, error) {
+func (h *ShortenerGRPCServer) GetPing(ctx context.Context, in *pb.GetPingRequest) (*pb.GetPingResponse, error) {
 	if err := h.stor.PingStor(ctx); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
