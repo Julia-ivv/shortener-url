@@ -30,6 +30,7 @@ func TestHandlerWithAuth(t *testing.T) {
 	h := HandlerWithAuth(http.HandlerFunc(hFunc))
 	h.ServeHTTP(w, req)
 	resp := w.Result()
+	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 	assert.NotEmpty(t, body)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
