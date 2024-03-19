@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/Julia-ivv/shortener-url.git/internal/proto";
+
+message GetUrlRequest {
+  string short_url = 1;
+}
+
+message GetUrlResponse {
+  string original_url = 1;
+}
+
+message PostUrlRequest {
+  string original_url = 1;
+}
+
+message PostUrlResponse {
+  string short_url = 1;
+}
+
+message PostBatchRequest {
+  message RequestBatch {
+    string correlation_id = 1;
+    string original_url = 2;
+  }
+  repeated RequestBatch request_batchs = 1;
+}
+
+message PostBatchResponse {
+  message ResponseBatch {
+    string correlation_id = 1;
+    string short_url = 2;
+  }
+  repeated ResponseBatch response_batchs = 1;
+}
+
+message GetUserUrlsRequest {}
+
+message GetUserUrlsResponse {
+  message UserUrl {
+    string short_url = 1;
+    string original_url = 2;
+  }
+  repeated UserUrl user_urls = 1;
+}
+
+message DeleteUserUrlsRequest {
+  repeated string del_urls = 1;
+}
+
+message DeleteUserUrlsResponse {}
+
+message GetStatsRequest {}
+
+message GetStatsResponse {
+  int32 urls = 1;
+  int32 users = 2;
+}
+
+message GetPingRequest {}
+
+message GetPingResponse {}
+
+service ShortUrl {
+  rpc GetUrl(GetUrlRequest) returns (GetUrlResponse);
+  rpc PostUrl(PostUrlRequest) returns (PostUrlResponse);
+  rpc PostBatch(PostBatchRequest) returns (PostBatchResponse);
+  rpc GetUserUrls(GetUserUrlsRequest) returns (GetUserUrlsResponse);
+  rpc DeleteUserUrls(DeleteUserUrlsRequest) returns (DeleteUserUrlsResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  rpc GetPing(GetPingRequest) returns (GetPingResponse);
+}

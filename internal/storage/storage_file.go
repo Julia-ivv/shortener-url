@@ -6,9 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"slices"
 	"sync"
-
-	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // FileURL stores URL information in file.
@@ -76,14 +75,10 @@ func (f *FileURLs) GetURL(ctx context.Context, shortURL string) (originURL strin
 }
 
 // AddURL adds a new short url.
-func (f *FileURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
-	short, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
-	if err != nil {
-		return "", err
-	}
+func (f *FileURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (findURL string, err error) {
 	url := FileURL{
 		UserID:      userID,
-		ShortURL:    short,
+		ShortURL:    shortURL,
 		OriginalURL: originURL,
 		DeletedFlag: false,
 	}
@@ -105,34 +100,25 @@ func (f *FileURLs) AddURL(ctx context.Context, originURL string, userID int) (sh
 
 	f.Urls = append(f.Urls, url)
 
-	return short, wr.Flush()
+	return "", wr.Flush()
 }
 
 // AddBatch adds a batch of new short URLs.
-func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error) {
+func (f *FileURLs) AddBatch(ctx context.Context, shortURLBatch []ResponseBatch, originURLBatch []RequestBatch, userID int) (err error) {
 	var allData []byte
 	urls := make([]FileURL, 0)
-	for _, v := range originURLBatch {
-		var sURL string
-		sURL, err = randomizer.GenerateRandomString(randomizer.LengthShortURL)
-		if err != nil {
-			return nil, err
-		}
-		shortURLBatch = append(shortURLBatch, ResponseBatch{
-			CorrelationID: v.CorrelationID,
-			ShortURL:      baseURL + sURL,
-		})
+	for k, v := range shortURLBatch {
 		url := FileURL{
 			UserID:      userID,
-			ShortURL:    sURL,
-			OriginalURL: v.OriginalURL,
+			ShortURL:    v.ShortURL,
+			OriginalURL: originURLBatch[k].OriginalURL,
 			DeletedFlag: false,
 		}
 		urls = append(urls, url)
 		var data []byte
 		data, err = json.Marshal(url)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		allData = append(allData, data...)
 		allData = append(allData, '\n')
@@ -143,16 +129,16 @@ func (f *FileURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, 
 
 	wr := bufio.NewWriter(f.file)
 	if _, err = wr.Write(allData); err != nil {
-		return nil, err
+		return err
 	}
 	err = wr.Flush()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	f.Urls = append(f.Urls, urls...)
 
-	return shortURLBatch, nil
+	return nil
 }
 
 // GetAllUserURLs gets all user's short url.
@@ -185,6 +171,25 @@ func (f *FileURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID 
 		}
 	}
 	return nil
+}
+
+// GetStats gets statistics - amount URLs and users.
+func (f *FileURLs) GetStats(ctx context.Context) (stats ServiceStats, err error) {
+	f.Lock()
+	defer f.Unlock()
+
+	stats.URLs = len(f.Urls)
+	stats.Users = 0
+
+	tmp := make([]int, len(f.Urls))
+	for _, v := range f.Urls {
+		if !slices.Contains(tmp, v.UserID) {
+			tmp = append(tmp, v.UserID)
+			stats.Users++
+		}
+	}
+
+	return stats, nil
 }
 
 // PingStor checking access to storage.

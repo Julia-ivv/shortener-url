@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
+	"github.com/Julia-ivv/shortener-url.git/internal/config"
 )
 
 var cfg config.Flags

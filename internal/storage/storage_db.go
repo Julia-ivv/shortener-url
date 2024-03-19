@@ -11,9 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/deleter"
+	"github.com/Julia-ivv/shortener-url.git/internal/deleter"
 	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
-	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // DBURLs stores a pointer to the database.
@@ -42,7 +41,6 @@ func NewConnectDB(DBDSN string) (*DBURLs, error) {
 
 // GetURL gets the original URL matching the short URL.
 func (db *DBURLs) GetURL(ctx context.Context, shortURL string) (originURL string, isDel bool, ok bool) {
-	// получить длинный урл не учитывая пользователя
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
@@ -94,14 +92,10 @@ func (db *DBURLs) GetAllUserURLs(ctx context.Context, baseURL string, userID int
 }
 
 // AddURL adds a new short url.
-func (db *DBURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
+func (db *DBURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (findURL string, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
-	shortURL, err = randomizer.GenerateRandomString(randomizer.LengthShortURL)
-	if err != nil {
-		return "", err
-	}
 	result, err := db.dbHandle.ExecContext(ctx,
 		"INSERT INTO urls VALUES ($1, $2, $3)", userID, shortURL, originURL)
 	if err != nil {
@@ -109,11 +103,11 @@ func (db *DBURLs) AddURL(ctx context.Context, originURL string, userID int) (sho
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			row := db.dbHandle.QueryRowContext(ctx,
 				"SELECT short_url FROM urls WHERE original_url=$1 AND user_id=$2", originURL, userID)
-			errScan := row.Scan(&shortURL)
+			errScan := row.Scan(&findURL)
 			if errScan != nil {
 				return "", err
 			}
-			return shortURL, err
+			return findURL, err
 		}
 		return "", err
 	}
@@ -125,48 +119,39 @@ func (db *DBURLs) AddURL(ctx context.Context, originURL string, userID int) (sho
 	if rows != 1 {
 		return "", fmt.Errorf("expected to affect 1 row, affected %d", rows)
 	}
-	return shortURL, nil
+	return "", nil
 }
 
 // AddBatch adds a batch of new short URLs.
-func (db *DBURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error) {
+func (db *DBURLs) AddBatch(ctx context.Context, shortURLBatch []ResponseBatch, originURLBatch []RequestBatch, userID int) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
 	tx, err := db.dbHandle.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	for _, v := range originURLBatch {
-		shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
+	for k, v := range shortURLBatch {
+		result, err := tx.ExecContext(ctx, "INSERT INTO urls VALUES ($1, $2, $3)",
+			userID, v.ShortURL, originURLBatch[k].OriginalURL)
 		if err != nil {
 			tx.Rollback()
-			return nil, err
-		}
-		result, err := tx.ExecContext(ctx, "INSERT INTO urls VALUES ($1, $2, $3)", userID, shortURL, v.OriginalURL)
-		if err != nil {
-			tx.Rollback()
-			return nil, err
+			return err
 		}
 
 		rows, err := result.RowsAffected()
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return err
 		}
 		if rows != 1 {
 			tx.Rollback()
-			return nil, fmt.Errorf("expected to affect 1 row, affected %d", rows)
+			return fmt.Errorf("expected to affect 1 row, affected %d", rows)
 		}
-
-		shortURLBatch = append(shortURLBatch, ResponseBatch{
-			CorrelationID: v.CorrelationID,
-			ShortURL:      baseURL + shortURL,
-		})
 	}
 
-	return shortURLBatch, tx.Commit()
+	return tx.Commit()
 }
 
 // DeleteUserURLs sets the deletion flag to the user URLs sent in the request.
@@ -193,6 +178,21 @@ func (db *DBURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userID i
 	logger.ZapSugar.Infof("user ID %d - removed %d out of %d", userID, cnt, len(delURLs))
 
 	return nil
+}
+
+// GetStats gets statistics - amount URLs and users.
+func (db *DBURLs) GetStats(ctx context.Context) (stats ServiceStats, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	row := db.dbHandle.QueryRowContext(ctx,
+		"SELECT COUNT(short_url) AS urls, COUNT(DISTINCT user_id) AS users FROM urls")
+	err = row.Scan(&stats.URLs, &stats.Users)
+	if err != nil {
+		return ServiceStats{}, err
+	}
+
+	return stats, nil
 }
 
 // PingStor checking access to storage.

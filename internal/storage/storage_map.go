@@ -3,9 +3,8 @@ package storage
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
-
-	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // MemURL stores URL information in memory.
@@ -43,41 +42,27 @@ func (urls *MemURLs) GetURL(ctx context.Context, shortURL string) (originURL str
 }
 
 // AddURL adds a new short url.
-func (urls *MemURLs) AddURL(ctx context.Context, originURL string, userID int) (shortURL string, err error) {
-	short, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
-	if err != nil {
-		return "", err
-	}
-
+func (urls *MemURLs) AddURL(ctx context.Context, shortURL string, originURL string, userID int) (findURL string, err error) {
 	urls.Lock()
 	defer urls.Unlock()
 
 	urls.originalURLs = append(urls.originalURLs, MemURL{
 		userID:      userID,
-		shortURL:    short,
+		shortURL:    shortURL,
 		originURL:   originURL,
 		deletedFlag: false,
 	})
-	return short, nil
+	return "", nil
 }
 
 // AddBatch adds a batch of new short URLs.
-func (urls *MemURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch, baseURL string, userID int) (shortURLBatch []ResponseBatch, err error) {
-	allUrls := make([]MemURL, len(originURLBatch))
-	shortURLBatch = make([]ResponseBatch, len(originURLBatch))
-	for _, v := range originURLBatch {
-		sURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
-		if err != nil {
-			return nil, err
-		}
-		shortURLBatch = append(shortURLBatch, ResponseBatch{
-			CorrelationID: v.CorrelationID,
-			ShortURL:      baseURL + sURL,
-		})
+func (urls *MemURLs) AddBatch(ctx context.Context, shortURLBatch []ResponseBatch, originURLBatch []RequestBatch, userID int) (err error) {
+	allUrls := make([]MemURL, len(shortURLBatch))
+	for k, v := range shortURLBatch {
 		allUrls = append(allUrls, MemURL{
 			userID:      userID,
-			shortURL:    sURL,
-			originURL:   v.OriginalURL,
+			shortURL:    v.ShortURL,
+			originURL:   originURLBatch[k].OriginalURL,
 			deletedFlag: false,
 		})
 	}
@@ -86,7 +71,7 @@ func (urls *MemURLs) AddBatch(ctx context.Context, originURLBatch []RequestBatch
 	defer urls.Unlock()
 	urls.originalURLs = append(urls.originalURLs, allUrls...)
 
-	return shortURLBatch, nil
+	return nil
 }
 
 // GetAllUserURLs gets all user's short url.
@@ -120,6 +105,25 @@ func (urls *MemURLs) DeleteUserURLs(ctx context.Context, delURLs []string, userI
 		}
 	}
 	return nil
+}
+
+// GetStats gets statistics - amount URLs and users.
+func (urls *MemURLs) GetStats(ctx context.Context) (stats ServiceStats, err error) {
+	urls.Lock()
+	defer urls.Unlock()
+
+	stats.URLs = len(urls.originalURLs)
+	stats.Users = 0
+
+	tmp := make([]int, len(urls.originalURLs))
+	for _, v := range urls.originalURLs {
+		if !slices.Contains(tmp, v.userID) {
+			tmp = append(tmp, v.userID)
+			stats.Users++
+		}
+	}
+
+	return stats, nil
 }
 
 // PingStor checking access to storage.

@@ -1,9 +1,10 @@
-package handlers
+package httpserver
 
 import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"sync"
 
@@ -11,11 +12,12 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/Julia-ivv/shortener-url.git/internal/app/authorizer"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/config"
-	mwInt "github.com/Julia-ivv/shortener-url.git/internal/app/middleware"
-	"github.com/Julia-ivv/shortener-url.git/internal/app/storage"
+	"github.com/Julia-ivv/shortener-url.git/internal/authorizer"
+	"github.com/Julia-ivv/shortener-url.git/internal/config"
+	mwInt "github.com/Julia-ivv/shortener-url.git/internal/middleware"
+	"github.com/Julia-ivv/shortener-url.git/internal/storage"
 	mwPkg "github.com/Julia-ivv/shortener-url.git/pkg/middleware"
+	"github.com/Julia-ivv/shortener-url.git/pkg/randomizer"
 )
 
 // Handlers stores the repository and settings of this application.
@@ -53,12 +55,23 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "request with empty body", http.StatusBadRequest)
 		return
 	}
-	shortURL, err := h.stor.AddURL(req.Context(), string(postURL), id)
+
+	shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
+	if err != nil {
+		http.Error(res, "500 internal server error", http.StatusInternalServerError)
+		return
+	}
+	findURL, err := h.stor.AddURL(req.Context(), shortURL, string(postURL), id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			res.Header().Set("Content-Type", "text/plain")
 			res.WriteHeader(http.StatusConflict)
+			_, err = res.Write([]byte(h.cfg.URL + "/" + findURL))
+			if err != nil {
+				http.Error(res, err.Error(), http.StatusBadRequest)
+				return
+			}
 		} else {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -66,11 +79,11 @@ func (h *Handlers) PostURL(res http.ResponseWriter, req *http.Request) {
 	} else {
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-	}
-	_, err = res.Write([]byte(h.cfg.URL + "/" + shortURL))
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+		_, err = res.Write([]byte(h.cfg.URL + "/" + shortURL))
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 }
 
@@ -104,14 +117,24 @@ func (h *Handlers) PostJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "request with empty body", http.StatusBadRequest)
 		return
 	}
-	json.Unmarshal(reqJSON, &reqURL)
-	shortURL, err := h.stor.AddURL(req.Context(), string(reqURL.URL), id)
+	err = json.Unmarshal(reqJSON, &reqURL)
+	if err != nil {
+		http.Error(res, "500 internal server error", http.StatusInternalServerError)
+		return
+	}
 
+	shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
+	if err != nil {
+		http.Error(res, "500 internal server error", http.StatusInternalServerError)
+		return
+	}
+	findURL, err := h.stor.AddURL(req.Context(), shortURL, string(reqURL.URL), id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			res.Header().Set("Content-Type", "application/json")
 			res.WriteHeader(http.StatusConflict)
+			shortURL = findURL
 		} else {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -163,7 +186,20 @@ func (h *Handlers) PostBatch(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "empty request", http.StatusBadRequest)
 		return
 	}
-	resBatch, err := h.stor.AddBatch(req.Context(), reqBatch, h.cfg.URL+"/", id)
+
+	resBatch := make([]storage.ResponseBatch, len(reqBatch))
+	for k, v := range reqBatch {
+		shortURL, err := randomizer.GenerateRandomString(randomizer.LengthShortURL)
+		if err != nil {
+			http.Error(res, "500 internal server error", http.StatusInternalServerError)
+			return
+		}
+		resBatch[k].CorrelationID = v.CorrelationID
+		resBatch[k].ShortURLFull = h.cfg.URL + "/" + shortURL
+		resBatch[k].ShortURL = shortURL
+	}
+
+	err = h.stor.AddBatch(req.Context(), resBatch, reqBatch, id)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -279,6 +315,47 @@ func (h *Handlers) DeleteUserURLs(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusAccepted)
 }
 
+// GetStats gets the amount of all users and URLs in the service.
+// Available only for IP addresses from a trusted subnet.
+func (h *Handlers) GetStats(res http.ResponseWriter, req *http.Request) {
+	if h.cfg.TrustedSubnet == "" {
+		http.Error(res, "403 Forbidden, empty trusted subnet", http.StatusForbidden)
+		return
+	}
+
+	ipStr := req.Header.Get("X-Real-IP")
+	ip := net.ParseIP(ipStr)
+	_, ipNet, err := net.ParseCIDR(h.cfg.TrustedSubnet)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !ipNet.Contains(ip) {
+		http.Error(res, "403 Forbidden, not trusted IP", http.StatusForbidden)
+		return
+	}
+
+	stats, err := h.stor.GetStats(req.Context())
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+
+	resp, err := json.Marshal(stats)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, err = res.Write(resp)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 // NewURLRouter creates a router instance.
 func NewURLRouter(repo storage.Repositories, cfg config.Flags, wg *sync.WaitGroup) chi.Router {
 	hs := NewHandlers(repo, cfg, wg)
@@ -294,5 +371,6 @@ func NewURLRouter(repo storage.Repositories, cfg config.Flags, wg *sync.WaitGrou
 		r.Delete("/api/user/urls", hs.DeleteUserURLs)
 	})
 	r.Get("/ping", hs.GetPingDB)
+	r.Get("/api/internal/stats", hs.GetStats)
 	return r
 }
