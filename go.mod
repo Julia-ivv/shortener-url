@@ -1,6 +1,6 @@
 module github.com/Julia-ivv/shortener-url.git
 
-go 1.20
+go 1.22
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
