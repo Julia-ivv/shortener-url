@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"sync"
 
-	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
+	"github.com/Julia-ivv/shortener-url/pkg/logger"
 )
 
 // NumWorkers - number of channels receiving data for deletion.

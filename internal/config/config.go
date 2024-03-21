@@ -9,7 +9,7 @@ import (
 
 	"github.com/caarlos0/env"
 
-	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
+	"github.com/Julia-ivv/shortener-url/pkg/logger"
 )
 
 // Flags stores application launch settings.
