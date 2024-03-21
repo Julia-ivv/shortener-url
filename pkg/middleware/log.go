@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
+	"github.com/Julia-ivv/shortener-url/pkg/logger"
 )
 
 type (

@@ -13,6 +13,8 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/Julia-ivv/shortener-url/pkg/logger"
+
 	"github.com/Julia-ivv/shortener-url.git/cmd/certgenerator"
 	"github.com/Julia-ivv/shortener-url.git/internal/config"
 	"github.com/Julia-ivv/shortener-url.git/internal/grpcserver"
@@ -20,7 +22,6 @@ import (
 	"github.com/Julia-ivv/shortener-url.git/internal/interceptors"
 	pb "github.com/Julia-ivv/shortener-url.git/internal/proto"
 	"github.com/Julia-ivv/shortener-url.git/internal/storage"
-	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
 )
 
 var (

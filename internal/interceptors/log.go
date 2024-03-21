@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/Julia-ivv/shortener-url.git/pkg/logger"
+	"github.com/Julia-ivv/shortener-url/pkg/logger"
 )
 
 // HandlerWithLogging adds logging to the gRPC methods.
